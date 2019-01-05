@@ -19,6 +19,7 @@ PG_FUNCTION_INFO_V1(ltxtq_out);
 #define WAITOPERAND 1
 #define INOPERAND 2
 #define WAITOPERATOR	3
+#define WAITESCAPED 4
 
 /*
  * node of query tree, also used
@@ -78,20 +79,40 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 					(state->buf)++;
 					return OPEN;
 				}
-				else if (ISALNUM(state->buf))
+				else if (charlen == 1 && t_iseq(state->buf, '\\'))
+				{
+					state->state = WAITESCAPED;
+					*strval = state->buf;
+					*lenval = 0;
+					*flag = 0;
+				}
+				else if (t_isspace(state->buf))
+				{
+					/* do nothing */
+				}
+				else /* if (ISALNUM(state->buf)) */
 				{
 					state->state = INOPERAND;
 					*strval = state->buf;
 					*lenval = charlen;
 					*flag = 0;
 				}
-				else if (!t_isspace(state->buf))
-					ereport(ERROR,
-							(errcode(ERRCODE_SYNTAX_ERROR),
-							 errmsg("operand syntax error")));
 				break;
 			case INOPERAND:
-				if (ISALNUM(state->buf))
+				if (charlen == 1 && t_iseq(state->buf, '%'))
+					*flag |= LVAR_SUBLEXEME;
+				else if (charlen == 1 && t_iseq(state->buf, '@'))
+					*flag |= LVAR_INCASE;
+				else if (charlen == 1 && t_iseq(state->buf, '*'))
+					*flag |= LVAR_ANYEND;
+				else if (charlen == 1 && t_iseq(state->buf, '\\'))
+					state->state = WAITESCAPED;
+				else if (t_isspace(state->buf))
+				{
+					state->state = WAITOPERATOR;
+					return VAL;
+				}
+				else
 				{
 					if (*flag)
 						ereport(ERROR,
@@ -99,17 +120,14 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 								 errmsg("modifiers syntax error")));
 					*lenval += charlen;
 				}
-				else if (charlen == 1 && t_iseq(state->buf, '%'))
-					*flag |= LVAR_SUBLEXEME;
-				else if (charlen == 1 && t_iseq(state->buf, '@'))
-					*flag |= LVAR_INCASE;
-				else if (charlen == 1 && t_iseq(state->buf, '*'))
-					*flag |= LVAR_ANYEND;
-				else
-				{
-					state->state = WAITOPERATOR;
-					return VAL;
-				}
+				break;
+			case WAITESCAPED:
+					if (*flag)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("modifiers syntax error")));
+					*lenval += charlen;
+					state->state = INOPERAND;
 				break;
 			case WAITOPERATOR:
 				if (charlen == 1 && (t_iseq(state->buf, '&') || t_iseq(state->buf, '|')))
