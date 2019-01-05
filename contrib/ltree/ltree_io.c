@@ -33,6 +33,93 @@ typedef struct
 
 #define LTPRS_WAITNAME	0
 #define LTPRS_WAITDELIM 1
+#define LTPRS_WAITESCAPED 2
+
+static void
+count_lquery_parts_ors(const char *ptr, int *plevels, int *pORs)
+{
+	int escape_mode = 0;
+	int charlen;
+
+	while (*ptr)
+	{
+		charlen = pg_mblen(ptr);
+
+		if (escape_mode == 1)
+			escape_mode = 0;
+		else if (charlen == 1)
+		{
+			if (t_iseq(ptr, '\\'))
+				escape_mode = 1;
+			else if (t_iseq(ptr, '.'))
+				(*plevels)++;
+			else if (t_iseq(ptr, '|') && pORs != NULL)
+				(*pORs)++;
+		}
+
+		ptr += charlen;
+	}
+
+	(*plevels)++;
+	if (pORs != NULL)
+		(*pORs)++;
+}
+
+static void
+copy_unescaped(const char *src, char *dst, int max_len)
+{
+	uint16 copied = 0;
+	int charlen;
+	int escaping = 0;
+
+	while (*src && copied < max_len)
+	{
+		charlen = pg_mblen(src);
+		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0) {
+			escaping = 1;
+			src++;
+			continue;
+		};
+
+		if (copied + charlen > max_len)
+			elog(ERROR, "internal error during splitting levels");
+
+		memcpy(dst, src, charlen);
+		src += charlen;
+		dst += charlen;
+		copied += charlen;
+		escaping = 0;
+	}
+}
+
+static int
+copy_escaped(const char *src, char *dst, int len, const char *to_escape)
+{
+	uint16 copied = 0;
+	int charlen;
+	int escapes = 0;
+	char *buf = dst;
+
+	while (*src && copied < len)
+	{
+		charlen = pg_mblen(src);
+		if ((charlen == 1) && strchr(to_escape, *src))
+		{
+			*buf = '\\';
+			buf++;
+			escapes++;
+		};
+
+		if (copied + charlen > len)
+			elog(ERROR, "internal error during merging levels");
+
+		memcpy(buf, src, charlen);
+		src += charlen;
+		buf += charlen;
+		copied += charlen;
+	}
+	return escapes;
+}
 
 Datum
 ltree_in(PG_FUNCTION_ARGS)
@@ -40,90 +127,100 @@ ltree_in(PG_FUNCTION_ARGS)
 	char	   *buf = (char *) PG_GETARG_POINTER(0);
 	char	   *ptr;
 	nodeitem   *list,
-			   *lptr;
-	int			num = 0,
-				totallen = 0;
+						 *lptr;
+	int			levels = 0,
+					totallen = 0;
 	int			state = LTPRS_WAITNAME;
 	ltree	   *result;
 	ltree_level *curlevel;
 	int			charlen;
+	/* Position in strings, in symbols. */
 	int			pos = 0;
+	int     escaped_count = 0;
 
 	ptr = buf;
-	while (*ptr)
-	{
-		charlen = pg_mblen(ptr);
-		if (charlen == 1 && t_iseq(ptr, '.'))
-			num++;
-		ptr += charlen;
-	}
+	count_lquery_parts_ors(ptr, &levels, NULL);
 
-	if (num + 1 > MaxAllocSize / sizeof(nodeitem))
+	if (levels > MaxAllocSize / sizeof(nodeitem))
 		ereport(ERROR,
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("number of levels (%d) exceeds the maximum allowed (%d)",
-						num + 1, (int) (MaxAllocSize / sizeof(nodeitem)))));
-	list = lptr = (nodeitem *) palloc(sizeof(nodeitem) * (num + 1));
+					 levels, (int) (MaxAllocSize / sizeof(nodeitem)))));
+	list = lptr = (nodeitem *) palloc(sizeof(nodeitem) * (levels));
+	/*
+	 * This block calculates single nodes' settings
+	 * */
 	ptr = buf;
 	while (*ptr)
 	{
 		charlen = pg_mblen(ptr);
-
 		if (state == LTPRS_WAITNAME)
 		{
-			if (ISALNUM(ptr))
-			{
-				lptr->start = ptr;
-				lptr->wlen = 0;
-				state = LTPRS_WAITDELIM;
+			state = LTPRS_WAITDELIM;
+			lptr->start = ptr;
+			lptr->wlen = 0;
+			escaped_count = 0;
+
+			if (charlen == 1) {
+				if (t_iseq(ptr, '.')) {
+					UNCHAR;
+				}
+				else if (t_iseq(ptr, '\\')) {
+					state = LTPRS_WAITESCAPED;
+				}
 			}
-			else
-				UNCHAR;
+		}
+		else if (state == LTPRS_WAITESCAPED)
+		{
+			state = LTPRS_WAITDELIM;
+			escaped_count++;
 		}
 		else if (state == LTPRS_WAITDELIM)
 		{
 			if (charlen == 1 && t_iseq(ptr, '.'))
 			{
-				lptr->len = ptr - lptr->start;
+				lptr->len = ptr - lptr->start - escaped_count;
 				if (lptr->wlen > 255)
 					ereport(ERROR,
 							(errcode(ERRCODE_NAME_TOO_LONG),
 							 errmsg("name of level is too long"),
 							 errdetail("Name length is %d, must "
-									   "be < 256, in position %d.",
-									   lptr->wlen, pos)));
+								 "be < 256, in position %d.",
+								 lptr->wlen, pos)));
 
 				totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 				lptr++;
 				state = LTPRS_WAITNAME;
 			}
-			else if (!ISALNUM(ptr))
-				UNCHAR;
+			else if (charlen == 1 && t_iseq(ptr, '\\'))
+			{
+				state = LTPRS_WAITESCAPED;
+			}
 		}
 		else
 			/* internal error */
 			elog(ERROR, "internal error in parser");
-
 		ptr += charlen;
-		lptr->wlen++;
+		if (state == LTPRS_WAITDELIM)
+			lptr->wlen++;
 		pos++;
 	}
 
 	if (state == LTPRS_WAITDELIM)
 	{
-		lptr->len = ptr - lptr->start;
+		lptr->len = ptr - lptr->start - escaped_count;
 		if (lptr->wlen > 255)
 			ereport(ERROR,
 					(errcode(ERRCODE_NAME_TOO_LONG),
 					 errmsg("name of level is too long"),
 					 errdetail("Name length is %d, must "
-							   "be < 256, in position %d.",
-							   lptr->wlen, pos)));
+						 "be < 256, in position %d.",
+						 lptr->wlen, pos)));
 
 		totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 		lptr++;
 	}
-	else if (!(state == LTPRS_WAITNAME && lptr == list))
+	else if (!(state == LTPRS_WAITNAME && lptr == list)) /* Empty string */
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("syntax error"),
@@ -137,7 +234,10 @@ ltree_in(PG_FUNCTION_ARGS)
 	while (lptr - list < result->numlevel)
 	{
 		curlevel->len = (uint16) lptr->len;
-		memcpy(curlevel->name, lptr->start, lptr->len);
+		if (lptr->len > 0)
+		{
+			copy_unescaped(lptr->start, curlevel->name, lptr->len);
+		}
 		curlevel = LEVEL_NEXT(curlevel);
 		lptr++;
 	}
@@ -164,8 +264,11 @@ ltree_out(PG_FUNCTION_ARGS)
 			*ptr = '.';
 			ptr++;
 		}
-		memcpy(ptr, curlevel->name, curlevel->len);
-		ptr += curlevel->len;
+		if (curlevel->len > 0) {
+			int escapes = copy_escaped(curlevel->name, ptr, curlevel->len, " .");
+			ptr += curlevel->len;
+			ptr += escapes;
+		}
 		curlevel = LEVEL_NEXT(curlevel);
 	}
 
@@ -184,6 +287,7 @@ ltree_out(PG_FUNCTION_ARGS)
 #define LQPRS_WAITCLOSE 6
 #define LQPRS_WAITEND	7
 #define LQPRS_WAITVAR	8
+#define LQPRS_WAITESCAPED 9
 
 
 #define GETVAR(x) ( *((nodeitem**)LQL_FIRST(x)) )
@@ -195,7 +299,7 @@ lquery_in(PG_FUNCTION_ARGS)
 {
 	char	   *buf = (char *) PG_GETARG_POINTER(0);
 	char	   *ptr;
-	int			num = 0,
+	int			levels = 0,
 				totallen = 0,
 				numOR = 0;
 	int			state = LQPRS_WAITLEVEL;
@@ -209,30 +313,17 @@ lquery_in(PG_FUNCTION_ARGS)
 	bool		wasbad = false;
 	int			charlen;
 	int			pos = 0;
+	int 		escaped_count = 0;
 
 	ptr = buf;
-	while (*ptr)
-	{
-		charlen = pg_mblen(ptr);
+	count_lquery_parts_ors(ptr, &levels, &numOR);
 
-		if (charlen == 1)
-		{
-			if (t_iseq(ptr, '.'))
-				num++;
-			else if (t_iseq(ptr, '|'))
-				numOR++;
-		}
-
-		ptr += charlen;
-	}
-
-	num++;
-	if (num > MaxAllocSize / ITEMSIZE)
+	if (levels > MaxAllocSize / ITEMSIZE)
 		ereport(ERROR,
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("number of levels (%d) exceeds the maximum allowed (%d)",
-						num, (int) (MaxAllocSize / ITEMSIZE))));
-	curqlevel = tmpql = (lquery_level *) palloc0(ITEMSIZE * num);
+						levels, (int) (MaxAllocSize / ITEMSIZE))));
+	curqlevel = tmpql = (lquery_level *) palloc0(ITEMSIZE * levels);
 	ptr = buf;
 	while (*ptr)
 	{
@@ -240,38 +331,44 @@ lquery_in(PG_FUNCTION_ARGS)
 
 		if (state == LQPRS_WAITLEVEL)
 		{
-			if (ISALNUM(ptr))
-			{
-				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * (numOR + 1));
+			escaped_count = 0;
+			if (charlen == 1) {
+				if (t_iseq(ptr, '!')) {
+					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
+					lptr->start = ptr + 1;
+					state = LQPRS_WAITDELIM;
+					curqlevel->numvar = 1;
+					curqlevel->flag |= LQL_NOT;
+					hasnot = true;
+				}
+				else if (t_iseq(ptr, '*'))
+					state = LQPRS_WAITOPEN;
+				else if (t_iseq(ptr, '\\')) {
+					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
+					lptr->start = ptr;
+					curqlevel->numvar = 1;
+					state = LQPRS_WAITESCAPED;
+				}
+				else if (t_iseq(ptr, '.') || t_iseq(ptr, '|'))
+					UNCHAR;
+			}
+			else {
+				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
 				lptr->start = ptr;
 				state = LQPRS_WAITDELIM;
 				curqlevel->numvar = 1;
 			}
-			else if (charlen == 1 && t_iseq(ptr, '!'))
-			{
-				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * (numOR + 1));
-				lptr->start = ptr + 1;
-				state = LQPRS_WAITDELIM;
-				curqlevel->numvar = 1;
-				curqlevel->flag |= LQL_NOT;
-				hasnot = true;
-			}
-			else if (charlen == 1 && t_iseq(ptr, '*'))
-				state = LQPRS_WAITOPEN;
-			else
-				UNCHAR;
 		}
 		else if (state == LQPRS_WAITVAR)
 		{
-			if (ISALNUM(ptr))
-			{
-				lptr++;
-				lptr->start = ptr;
-				state = LQPRS_WAITDELIM;
-				curqlevel->numvar++;
-			}
-			else
+			escaped_count = 0;
+			lptr++;
+			lptr->start = ptr;
+			curqlevel->numvar++;
+			if (t_iseq(ptr, '.') || t_iseq(ptr, '|'))
 				UNCHAR;
+
+			state = (t_iseq(ptr, '\\')) ? LQPRS_WAITESCAPED : LQPRS_WAITDELIM;
 		}
 		else if (state == LQPRS_WAITDELIM)
 		{
@@ -298,7 +395,7 @@ lquery_in(PG_FUNCTION_ARGS)
 			}
 			else if (charlen == 1 && t_iseq(ptr, '|'))
 			{
-				lptr->len = ptr - lptr->start -
+				lptr->len = ptr - lptr->start - escaped_count -
 					((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 					((lptr->flag & LVAR_INCASE) ? 1 : 0) -
 					((lptr->flag & LVAR_ANYEND) ? 1 : 0);
@@ -307,14 +404,14 @@ lquery_in(PG_FUNCTION_ARGS)
 							(errcode(ERRCODE_NAME_TOO_LONG),
 							 errmsg("name of level is too long"),
 							 errdetail("Name length is %d, must "
-									   "be < 256, in position %d.",
-									   lptr->wlen, pos)));
+								 "be < 256, in position %d.",
+								 lptr->wlen, pos)));
 
 				state = LQPRS_WAITVAR;
 			}
 			else if (charlen == 1 && t_iseq(ptr, '.'))
 			{
-				lptr->len = ptr - lptr->start -
+				lptr->len = ptr - lptr->start - escaped_count -
 					((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 					((lptr->flag & LVAR_INCASE) ? 1 : 0) -
 					((lptr->flag & LVAR_ANYEND) ? 1 : 0);
@@ -323,19 +420,21 @@ lquery_in(PG_FUNCTION_ARGS)
 							(errcode(ERRCODE_NAME_TOO_LONG),
 							 errmsg("name of level is too long"),
 							 errdetail("Name length is %d, must "
-									   "be < 256, in position %d.",
-									   lptr->wlen, pos)));
+								 "be < 256, in position %d.",
+								 lptr->wlen, pos)));
 
 				state = LQPRS_WAITLEVEL;
 				curqlevel = NEXTLEV(curqlevel);
 			}
-			else if (ISALNUM(ptr))
+			else if (charlen == 1 && t_iseq(ptr, '\\'))
 			{
 				if (lptr->flag)
 					UNCHAR;
+				state = LQPRS_WAITESCAPED;
 			}
 			else
-				UNCHAR;
+				if (lptr->flag)
+					UNCHAR;
 		}
 		else if (state == LQPRS_WAITOPEN)
 		{
@@ -399,13 +498,18 @@ lquery_in(PG_FUNCTION_ARGS)
 		}
 		else if (state == LQPRS_WAITEND)
 		{
-			if (charlen == 1 && t_iseq(ptr, '.'))
+			if (charlen == 1 && (t_iseq(ptr, '.') || t_iseq(ptr, '|')))
 			{
 				state = LQPRS_WAITLEVEL;
 				curqlevel = NEXTLEV(curqlevel);
 			}
 			else
 				UNCHAR;
+		}
+		else if (state == LQPRS_WAITESCAPED)
+		{
+			state = LQPRS_WAITDELIM;
+			escaped_count++;
 		}
 		else
 			/* internal error */
@@ -425,7 +529,7 @@ lquery_in(PG_FUNCTION_ARGS)
 					 errmsg("syntax error"),
 					 errdetail("Unexpected end of line.")));
 
-		lptr->len = ptr - lptr->start -
+		lptr->len = ptr - lptr->start - escaped_count -
 			((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 			((lptr->flag & LVAR_INCASE) ? 1 : 0) -
 			((lptr->flag & LVAR_ANYEND) ? 1 : 0);
@@ -450,10 +554,16 @@ lquery_in(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("syntax error"),
 				 errdetail("Unexpected end of line.")));
+	else if (state == LQPRS_WAITESCAPED)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("syntax error"),
+				 errdetail("Unexpected end of line.")));
+
 
 	curqlevel = tmpql;
 	totallen = LQUERY_HDRSIZE;
-	while ((char *) curqlevel - (char *) tmpql < num * ITEMSIZE)
+	while ((char *) curqlevel - (char *) tmpql < levels * ITEMSIZE)
 	{
 		totallen += LQL_HDRSIZE;
 		if (curqlevel->numvar)
@@ -477,14 +587,14 @@ lquery_in(PG_FUNCTION_ARGS)
 
 	result = (lquery *) palloc0(totallen);
 	SET_VARSIZE(result, totallen);
-	result->numlevel = num;
+	result->numlevel = levels;
 	result->firstgood = 0;
 	result->flag = 0;
 	if (hasnot)
 		result->flag |= LQUERY_HASNOT;
 	cur = LQUERY_FIRST(result);
 	curqlevel = tmpql;
-	while ((char *) curqlevel - (char *) tmpql < num * ITEMSIZE)
+	while ((char *) curqlevel - (char *) tmpql < levels * ITEMSIZE)
 	{
 		memcpy(cur, curqlevel, LQL_HDRSIZE);
 		cur->totallen = LQL_HDRSIZE;
@@ -497,8 +607,8 @@ lquery_in(PG_FUNCTION_ARGS)
 				cur->totallen += MAXALIGN(LVAR_HDRSIZE + lptr->len);
 				lrptr->len = lptr->len;
 				lrptr->flag = lptr->flag;
-				lrptr->val = ltree_crc32_sz(lptr->start, lptr->len);
-				memcpy(lrptr->name, lptr->start, lptr->len);
+				copy_unescaped(lptr->start, lrptr->name, lptr->len);
+				lrptr->val = ltree_crc32_sz(lrptr->name, lptr->len);
 				lptr++;
 				lrptr = LVAR_NEXT(lrptr);
 			}
@@ -560,13 +670,15 @@ lquery_out(PG_FUNCTION_ARGS)
 			curtlevel = LQL_FIRST(curqlevel);
 			for (j = 0; j < curqlevel->numvar; j++)
 			{
+				int escapes = 0;
 				if (j != 0)
 				{
 					*ptr = '|';
 					ptr++;
 				}
-				memcpy(ptr, curtlevel->name, curtlevel->len);
+				escapes = copy_escaped(curtlevel->name, ptr, curtlevel->len, " .|");
 				ptr += curtlevel->len;
+				ptr += escapes;
 				if ((curtlevel->flag & LVAR_SUBLEXEME))
 				{
 					*ptr = '%';
