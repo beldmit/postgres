@@ -9,6 +9,7 @@ select E'x\\ '::ltree;
 select E'x\\.'::ltree;
 select E'x\\a'::ltree;
 select E'x\\n'::ltree;
+select 'a b.с d'::ltree;
 
 SELECT nlevel(E'Bottom\\.Test'::ltree);
 SELECT subpath(E'Bottom\\.'::ltree, 0, 1);
@@ -16,6 +17,7 @@ SELECT subpath(E'Bottom\\.'::ltree, 0, 1);
 SELECT subpath(E'a\\.b', 0, 1);
 SELECT subpath(E'a\\..b', 1, 1);
 SELECT subpath(E'a\\..\\b', 1, 1);
+select subpath(E'a b.с d'::ltree, 1, 1);
 
 SELECT(
 '01234567890123456789012345678901234567890123456789' ||
@@ -37,6 +39,7 @@ SELECT 'абв\|г'::lquery;
 SELECT 'абв\|г'::ltree ~ 'абв\|г'::lquery;
 SELECT 'абв|г'::ltree ~ 'абв*'::lquery; --true
 SELECT 'абв|г'::ltree ~ 'абв\*'::lquery; --false
+SELECT E'абв|\\.'::ltree ~ 'абв\|*'::lquery; --true
 --failures
 select E'\\'::ltree; -- error
 select E'n\\'::ltree; --error
