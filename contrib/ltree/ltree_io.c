@@ -265,7 +265,7 @@ ltree_out(PG_FUNCTION_ARGS)
 			ptr++;
 		}
 		if (curlevel->len > 0) {
-			int escapes = copy_escaped(curlevel->name, ptr, curlevel->len, " .");
+			int escapes = copy_escaped(curlevel->name, ptr, curlevel->len, "\\ .");
 			ptr += curlevel->len;
 			ptr += escapes;
 		}
@@ -676,7 +676,7 @@ lquery_out(PG_FUNCTION_ARGS)
 					*ptr = '|';
 					ptr++;
 				}
-				escapes = copy_escaped(curtlevel->name, ptr, curtlevel->len, " .|");
+				escapes = copy_escaped(curtlevel->name, ptr, curtlevel->len, "\\ .|");
 				ptr += curtlevel->len;
 				ptr += escapes;
 				if ((curtlevel->flag & LVAR_SUBLEXEME))
