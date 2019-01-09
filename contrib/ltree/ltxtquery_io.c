@@ -99,13 +99,13 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				}
 				break;
 			case INOPERAND:
-				if (*(state->buf) == '\0')
+				if ((*(state->buf) == '\0') || t_isspace(state->buf))
 				{
 					state->state = WAITOPERATOR;
 					return VAL;
 				}
 
-				if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@') 
+				if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@')
 					&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
 					) )
 				{
