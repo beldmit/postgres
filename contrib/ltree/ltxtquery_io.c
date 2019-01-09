@@ -90,7 +90,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				{
 					/* do nothing */
 				}
-				else /* if (ISALNUM(state->buf)) */
+				else
 				{
 					state->state = INOPERAND;
 					*strval = state->buf;
@@ -107,12 +107,12 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 
 				if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@')
 					&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
-					) )
+					&& !t_iseq(state->buf, '%')) )
 				{
 					if (*flag)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error 1")));
+								 errmsg("modifiers syntax error")));
 					*lenval += charlen;
 				}
 				else if (charlen == 1 && t_iseq(state->buf, '%'))
@@ -126,7 +126,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 					if (*flag)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error 1")));
+								 errmsg("modifiers syntax error")));
 
 					state->state = WAITESCAPED;
 				}
