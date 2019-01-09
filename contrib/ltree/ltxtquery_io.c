@@ -99,34 +99,44 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				}
 				break;
 			case INOPERAND:
-				if (charlen == 1 && t_iseq(state->buf, '%'))
+				if (*(state->buf) == '\0')
+				{
+					state->state = WAITOPERATOR;
+					return VAL;
+				}
+
+				if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@') 
+					&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
+					) )
+				{
+					if (*flag)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("modifiers syntax error 1")));
+					*lenval += charlen;
+				}
+				else if (charlen == 1 && t_iseq(state->buf, '%'))
 					*flag |= LVAR_SUBLEXEME;
 				else if (charlen == 1 && t_iseq(state->buf, '@'))
 					*flag |= LVAR_INCASE;
 				else if (charlen == 1 && t_iseq(state->buf, '*'))
 					*flag |= LVAR_ANYEND;
 				else if (charlen == 1 && t_iseq(state->buf, '\\'))
+				{
+					if (*flag)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("modifiers syntax error 1")));
+
 					state->state = WAITESCAPED;
-				else if (t_isspace(state->buf))
+				}
+				else
 				{
 					state->state = WAITOPERATOR;
 					return VAL;
 				}
-				else
-				{
-					if (*flag)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error")));
-					*lenval += charlen;
-				}
 				break;
 			case WAITESCAPED:
-					if (*flag)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error")));
-					*lenval += charlen;
 					state->state = INOPERAND;
 				break;
 			case WAITOPERATOR:
