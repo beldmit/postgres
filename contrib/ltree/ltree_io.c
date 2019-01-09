@@ -313,7 +313,7 @@ lquery_in(PG_FUNCTION_ARGS)
 	bool		wasbad = false;
 	int			charlen;
 	int			pos = 0;
-	int 		escaped_count = 0;
+	int			escaped_count = 0;
 
 	ptr = buf;
 	count_lquery_parts_ors(ptr, &levels, &numOR);
@@ -349,8 +349,14 @@ lquery_in(PG_FUNCTION_ARGS)
 					curqlevel->numvar = 1;
 					state = LQPRS_WAITESCAPED;
 				}
-				else if (t_iseq(ptr, '.') || t_iseq(ptr, '|'))
+				else if (t_iseq(ptr, '.') || t_iseq(ptr, '|')) {
 					UNCHAR;
+				} else {
+					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
+					lptr->start = ptr;
+					state = LQPRS_WAITDELIM;
+					curqlevel->numvar = 1;
+				}
 			}
 			else {
 				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
