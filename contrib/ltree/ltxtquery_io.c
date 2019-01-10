@@ -137,7 +137,14 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				}
 				break;
 			case WAITESCAPED:
-					state->state = INOPERAND;
+				if (*(state->buf) == '\0')
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("escaping syntax error")));
+				}
+
+				state->state = INOPERAND;
 				break;
 			case WAITOPERATOR:
 				if (charlen == 1 && (t_iseq(state->buf, '&') || t_iseq(state->buf, '|')))
