@@ -97,7 +97,7 @@ copy_unescaped(const char *src, char *dst, int len)
 	}
 
 	if (copied != len)
-			elog(ERROR, "internal error during splitting levels");
+		elog(ERROR, "internal error during splitting levels");
 }
 
 /*
@@ -137,7 +137,7 @@ bytes_to_escape(const char *start, const int len, const char *to_escape)
 		copied += charlen;
 	}
 
-	return (quotes > 0) ? quotes+2 : 
+	return (quotes > 0) ? quotes+2 :
 		(escapes > 0) ? 2 : 0;
 }
 
@@ -179,9 +179,9 @@ copy_escaped(const char *src, char *dst, int len, const char *to_escape)
 static void
 adjust_quoted_nodeitem(nodeitem *lptr)
 {
-		lptr->start++;
-		lptr->len  -= 2;
-		lptr->wlen -= 2;
+	lptr->start++;
+	lptr->len  -= 2;
+	lptr->wlen -= 2;
 }
 
 Datum
@@ -229,7 +229,7 @@ ltree_in(PG_FUNCTION_ARGS)
 				if (t_iseq(ptr, '.')) {
 					UNCHAR;
 				}
-				else if (t_iseq(ptr, '\\')) 
+				else if (t_iseq(ptr, '\\'))
 					state = LTPRS_WAITESCAPED;
 				else if (t_iseq(ptr, '"'))
 					lptr->flag |= LVAR_QUOTEDPART;
@@ -277,17 +277,17 @@ ltree_in(PG_FUNCTION_ARGS)
 				UNCHAR;
 
 			adjust_quoted_nodeitem(lptr);
-					if (lptr->wlen > 255)
-						ereport(ERROR,
-								(errcode(ERRCODE_NAME_TOO_LONG),
-								 errmsg("name of level is too long"),
-								 errdetail("Name length is %d, must "
-									 "be < 256, in position %d.",
-									 lptr->wlen, pos)));
+			if (lptr->wlen > 255)
+				ereport(ERROR,
+						(errcode(ERRCODE_NAME_TOO_LONG),
+						 errmsg("name of level is too long"),
+						 errdetail("Name length is %d, must "
+							 "be < 256, in position %d.",
+							 lptr->wlen, pos)));
 
-					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
-					lptr++;
-					state = LTPRS_WAITNAME;
+			totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
+			lptr++;
+			state = LTPRS_WAITNAME;
 		}
 		else
 			/* internal error */
@@ -301,10 +301,10 @@ ltree_in(PG_FUNCTION_ARGS)
 	if (state == LTPRS_WAITDELIM || state == LTPRS_WAITDELIMSTRICT)
 	{
 		if (lptr->flag & LVAR_QUOTEDPART)
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("syntax error"),
-				 errdetail("Unexpected end of line.")));
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("syntax error"),
+					 errdetail("Unexpected end of line.")));
 
 		lptr->len = ptr - lptr->start - escaped_count;
 
@@ -353,7 +353,7 @@ ltree_out(PG_FUNCTION_ARGS)
 {
 	ltree	   *in = PG_GETARG_LTREE_P(0);
 	char	   *buf,
-			   *ptr;
+					 *ptr;
 	int			i;
 	ltree_level *curlevel;
 	Size 	allocated = VARSIZE(in);
@@ -370,7 +370,7 @@ ltree_out(PG_FUNCTION_ARGS)
 			ptr++;
 			filled++;
 		}
-		if (curlevel->len > 0) 
+		if (curlevel->len > 0)
 		{
 			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, special);
 			if (filled + extra_bytes + curlevel->len >= allocated)
@@ -396,7 +396,7 @@ ltree_out(PG_FUNCTION_ARGS)
 			{
 				*ptr = '"';
 				ptr++;
-			 	copy_escaped(curlevel->name, ptr, curlevel->len, "\"");
+				copy_escaped(curlevel->name, ptr, curlevel->len, "\"");
 				ptr[curlevel->len + extra_bytes - 2] = '"';
 				ptr++;
 				ptr += extra_bytes - 2;
