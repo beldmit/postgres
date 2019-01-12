@@ -43,6 +43,7 @@ typedef struct
 #define LVAR_ANYEND 0x01
 #define LVAR_INCASE 0x02
 #define LVAR_SUBLEXEME	0x04
+#define LVAR_QUOTEDPART 0x08
 
 typedef struct
 {

@@ -34,9 +34,10 @@ typedef struct
 #define LTPRS_WAITNAME	0
 #define LTPRS_WAITDELIM 1
 #define LTPRS_WAITESCAPED 2
+#define LTPRS_WAITDELIMSTRICT 3
 
 static void
-count_lquery_parts_ors(const char *ptr, int *plevels, int *pORs)
+count_parts_ors(const char *ptr, int *plevels, int *pORs)
 {
 	int escape_mode = 0;
 	int charlen;
@@ -65,14 +66,18 @@ count_lquery_parts_ors(const char *ptr, int *plevels, int *pORs)
 		(*pORs)++;
 }
 
+/*
+ * Char-by-char copying from src to dst representation removing escaping \\
+ * Total amount of copied bytes is len
+ */
 static void
-copy_unescaped(const char *src, char *dst, int max_len)
+copy_unescaped(const char *src, char *dst, int len)
 {
 	uint16 copied = 0;
 	int charlen;
-	int escaping = 0;
+	bool escaping = false;
 
-	while (*src && copied < max_len)
+	while (*src && copied < len)
 	{
 		charlen = pg_mblen(src);
 		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0) {
@@ -81,7 +86,7 @@ copy_unescaped(const char *src, char *dst, int max_len)
 			continue;
 		};
 
-		if (copied + charlen > max_len)
+		if (copied + charlen > len)
 			elog(ERROR, "internal error during splitting levels");
 
 		memcpy(dst, src, charlen);
@@ -90,6 +95,50 @@ copy_unescaped(const char *src, char *dst, int max_len)
 		copied += charlen;
 		escaping = 0;
 	}
+
+	if (copied != len)
+			elog(ERROR, "internal error during splitting levels");
+}
+
+/*
+ * Function calculating bytes to escape
+ * to_escape is an array of "special" 1-byte symbols
+ * Behvaiour:
+ * If there is no "special" symbols, return 0
+ * If there are any special symbol, we need initial and final quote, so return 2
+ * If there are any quotes, we need to escape all of them and also initial and final quote, so
+ * return 2 + number of quotes
+ */
+static int
+bytes_to_escape(const char *start, const int len, const char *to_escape)
+{
+	uint16 copied = 0;
+	int charlen;
+	int escapes = 0;
+	int quotes  = 0;
+	const char *buf = start;
+
+	while (*start && copied < len)
+	{
+		charlen = pg_mblen(buf);
+		if ((charlen == 1) && strchr(to_escape, *buf))
+		{
+			escapes++;
+		}
+		else if ((charlen == 1) && t_iseq(buf, '"'))
+		{
+			quotes++;
+		}
+
+		if (copied + charlen > len)
+			elog(ERROR, "internal error during merging levels");
+
+		buf += charlen;
+		copied += charlen;
+	}
+
+	return (quotes > 0) ? quotes+2 : 
+		(escapes > 0) ? 2 : 0;
 }
 
 static int
@@ -121,6 +170,20 @@ copy_escaped(const char *src, char *dst, int len, const char *to_escape)
 	return escapes;
 }
 
+/*
+ * If we have a part beginning with quote,
+ * we must be sure it is finished with quote either.
+ * After that we moving start of the part a byte ahead
+ * and excluding beginning and final quotes from the part itself.
+ * */
+static void
+adjust_quoted_nodeitem(nodeitem *lptr)
+{
+		lptr->start++;
+		lptr->len  -= 2;
+		lptr->wlen -= 2;
+}
+
 Datum
 ltree_in(PG_FUNCTION_ARGS)
 {
@@ -139,7 +202,7 @@ ltree_in(PG_FUNCTION_ARGS)
 	int     escaped_count = 0;
 
 	ptr = buf;
-	count_lquery_parts_ors(ptr, &levels, NULL);
+	count_parts_ors(ptr, &levels, NULL);
 
 	if (levels > MaxAllocSize / sizeof(nodeitem))
 		ereport(ERROR,
@@ -159,15 +222,17 @@ ltree_in(PG_FUNCTION_ARGS)
 			state = LTPRS_WAITDELIM;
 			lptr->start = ptr;
 			lptr->wlen = 0;
+			lptr->flag = 0;
 			escaped_count = 0;
 
 			if (charlen == 1) {
 				if (t_iseq(ptr, '.')) {
 					UNCHAR;
 				}
-				else if (t_iseq(ptr, '\\')) {
+				else if (t_iseq(ptr, '\\')) 
 					state = LTPRS_WAITESCAPED;
-				}
+				else if (t_iseq(ptr, '"'))
+					lptr->flag |= LVAR_QUOTEDPART;
 			}
 		}
 		else if (state == LTPRS_WAITESCAPED)
@@ -177,38 +242,75 @@ ltree_in(PG_FUNCTION_ARGS)
 		}
 		else if (state == LTPRS_WAITDELIM)
 		{
-			if (charlen == 1 && t_iseq(ptr, '.'))
+			if (charlen == 1)
 			{
-				lptr->len = ptr - lptr->start - escaped_count;
-				if (lptr->wlen > 255)
-					ereport(ERROR,
-							(errcode(ERRCODE_NAME_TOO_LONG),
-							 errmsg("name of level is too long"),
-							 errdetail("Name length is %d, must "
-								 "be < 256, in position %d.",
-								 lptr->wlen, pos)));
+				if (t_iseq(ptr, '.') && !(lptr->flag & LVAR_QUOTEDPART))
+				{
+					lptr->len = ptr - lptr->start - escaped_count;
 
-				totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
-				lptr++;
-				state = LTPRS_WAITNAME;
+					if (lptr->wlen > 255)
+						ereport(ERROR,
+								(errcode(ERRCODE_NAME_TOO_LONG),
+								 errmsg("name of level is too long"),
+								 errdetail("Name length is %d, must "
+									 "be < 256, in position %d.",
+									 lptr->wlen, pos)));
+
+					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
+					lptr++;
+					state = LTPRS_WAITNAME;
+				}
+				else if (t_iseq(ptr, '\\'))
+				{
+					state = LTPRS_WAITESCAPED;
+				}
+				else if (t_iseq(ptr, '"') && (lptr->flag & LVAR_QUOTEDPART))
+				{
+					lptr->flag &= ~LVAR_QUOTEDPART;
+					state = LTPRS_WAITDELIMSTRICT;
+				}
 			}
-			else if (charlen == 1 && t_iseq(ptr, '\\'))
-			{
-				state = LTPRS_WAITESCAPED;
-			}
+		}
+		else if (state == LTPRS_WAITDELIMSTRICT)
+		{
+			if (!(charlen == 1 && t_iseq(ptr, '.')))
+				UNCHAR;
+
+			adjust_quoted_nodeitem(lptr);
+					if (lptr->wlen > 255)
+						ereport(ERROR,
+								(errcode(ERRCODE_NAME_TOO_LONG),
+								 errmsg("name of level is too long"),
+								 errdetail("Name length is %d, must "
+									 "be < 256, in position %d.",
+									 lptr->wlen, pos)));
+
+					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
+					lptr++;
+					state = LTPRS_WAITNAME;
 		}
 		else
 			/* internal error */
 			elog(ERROR, "internal error in parser");
 		ptr += charlen;
-		if (state == LTPRS_WAITDELIM)
+		if (state == LTPRS_WAITDELIM || state == LTPRS_WAITDELIMSTRICT)
 			lptr->wlen++;
 		pos++;
 	}
 
-	if (state == LTPRS_WAITDELIM)
+	if (state == LTPRS_WAITDELIM || state == LTPRS_WAITDELIMSTRICT)
 	{
+		if (lptr->flag & LVAR_QUOTEDPART)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("syntax error"),
+				 errdetail("Unexpected end of line.")));
+
 		lptr->len = ptr - lptr->start - escaped_count;
+
+		if (state == LTPRS_WAITDELIMSTRICT)
+			adjust_quoted_nodeitem(lptr);
+
 		if (lptr->wlen > 255)
 			ereport(ERROR,
 					(errcode(ERRCODE_NAME_TOO_LONG),
@@ -254,8 +356,11 @@ ltree_out(PG_FUNCTION_ARGS)
 			   *ptr;
 	int			i;
 	ltree_level *curlevel;
+	Size 	allocated = VARSIZE(in);
+	Size  filled = 0;
+	const char special[] = "\\ .";
 
-	ptr = buf = (char *) palloc(VARSIZE(in));
+	ptr = buf = (char *) palloc(allocated);
 	curlevel = LTREE_FIRST(in);
 	for (i = 0; i < in->numlevel; i++)
 	{
@@ -263,11 +368,40 @@ ltree_out(PG_FUNCTION_ARGS)
 		{
 			*ptr = '.';
 			ptr++;
+			filled++;
 		}
-		if (curlevel->len > 0) {
-			int escapes = copy_escaped(curlevel->name, ptr, curlevel->len, "\\ .");
+		if (curlevel->len > 0) 
+		{
+			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, special);
+			if (filled + extra_bytes + curlevel->len >= allocated)
+			{
+				buf = repalloc(buf, allocated + (extra_bytes + curlevel->len) * 2);
+				allocated += (extra_bytes + curlevel->len) * 2;
+				ptr = buf + filled;
+			}
+
+			if (extra_bytes == 0)
+			{
+				memcpy(ptr, curlevel->name, curlevel->len);
+			}
+			else if (extra_bytes == 2)
+			{
+				*ptr = '"';
+				ptr++;
+				memcpy(ptr, curlevel->name, curlevel->len);
+				ptr[curlevel->len] = '"';
+				ptr++;
+			}
+			else
+			{
+				*ptr = '"';
+				ptr++;
+			 	copy_escaped(curlevel->name, ptr, curlevel->len, "\"");
+				ptr[curlevel->len + extra_bytes - 2] = '"';
+				ptr++;
+				ptr += extra_bytes - 2;
+			}
 			ptr += curlevel->len;
-			ptr += escapes;
 		}
 		curlevel = LEVEL_NEXT(curlevel);
 	}
@@ -316,7 +450,7 @@ lquery_in(PG_FUNCTION_ARGS)
 	int			escaped_count = 0;
 
 	ptr = buf;
-	count_lquery_parts_ors(ptr, &levels, &numOR);
+	count_parts_ors(ptr, &levels, &numOR);
 
 	if (levels > MaxAllocSize / ITEMSIZE)
 		ereport(ERROR,
