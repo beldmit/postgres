@@ -142,7 +142,7 @@ bytes_to_escape(const char *start, const int len, const char *to_escape)
 }
 
 static int
-copy_escaped(const char *src, char *dst, int len, const char *to_escape)
+copy_escaped(char *dst, const char *src, int len, const char *to_escape)
 {
 	uint16 copied = 0;
 	int charlen;
@@ -168,6 +168,30 @@ copy_escaped(const char *src, char *dst, int len, const char *to_escape)
 		copied += charlen;
 	}
 	return escapes;
+}
+
+static void 
+copy_level(char *dst, const char *src, int len, int extra_bytes)
+{
+	if (extra_bytes == 0)
+		memcpy(dst, src, len);
+	else if (extra_bytes == 2)
+	{
+		*dst = '"';
+		dst++;
+		memcpy(dst, src, len);
+		dst[len] = '"';
+		dst++;
+	}
+	else
+	{
+		*dst = '"';
+		dst++;
+		copy_escaped(dst, src, len, "\"");
+		dst[len + extra_bytes - 2] = '"';
+		dst++;
+		dst += extra_bytes - 2;
+	}
 }
 
 /*
@@ -380,28 +404,8 @@ ltree_out(PG_FUNCTION_ARGS)
 				ptr = buf + filled;
 			}
 
-			if (extra_bytes == 0)
-			{
-				memcpy(ptr, curlevel->name, curlevel->len);
-			}
-			else if (extra_bytes == 2)
-			{
-				*ptr = '"';
-				ptr++;
-				memcpy(ptr, curlevel->name, curlevel->len);
-				ptr[curlevel->len] = '"';
-				ptr++;
-			}
-			else
-			{
-				*ptr = '"';
-				ptr++;
-				copy_escaped(curlevel->name, ptr, curlevel->len, "\"");
-				ptr[curlevel->len + extra_bytes - 2] = '"';
-				ptr++;
-				ptr += extra_bytes - 2;
-			}
-			ptr += curlevel->len;
+			copy_level(ptr, curlevel->name, curlevel->len, extra_bytes);
+			ptr += curlevel->len + extra_bytes;
 		}
 		curlevel = LEVEL_NEXT(curlevel);
 	}
@@ -422,6 +426,7 @@ ltree_out(PG_FUNCTION_ARGS)
 #define LQPRS_WAITEND	7
 #define LQPRS_WAITVAR	8
 #define LQPRS_WAITESCAPED 9
+#define LQPRS_WAITDELIMSTRICT 10
 
 
 #define GETVAR(x) ( *((nodeitem**)LQL_FIRST(x)) )
@@ -490,6 +495,10 @@ lquery_in(PG_FUNCTION_ARGS)
 					lptr->start = ptr;
 					state = LQPRS_WAITDELIM;
 					curqlevel->numvar = 1;
+					if (t_iseq(ptr, '"'))
+					{
+						lptr->flag |= LVAR_QUOTEDPART;
+					}
 				}
 			}
 			else {
@@ -509,72 +518,112 @@ lquery_in(PG_FUNCTION_ARGS)
 				UNCHAR;
 
 			state = (t_iseq(ptr, '\\')) ? LQPRS_WAITESCAPED : LQPRS_WAITDELIM;
+			if (t_iseq(ptr, '"'))
+				lptr->flag |= LVAR_QUOTEDPART;
 		}
-		else if (state == LQPRS_WAITDELIM)
+		else if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
 		{
-			if (charlen == 1 && t_iseq(ptr, '@'))
+			if (charlen == 1 && t_iseq(ptr, '"'))
 			{
+				/* We are here if variant begins with ! */
 				if (lptr->start == ptr)
+					lptr->flag |= LVAR_QUOTEDPART;
+				else if (state == LQPRS_WAITDELIMSTRICT)
+				{
 					UNCHAR;
-				lptr->flag |= LVAR_INCASE;
-				curqlevel->flag |= LVAR_INCASE;
+				}
+				else if (lptr->flag & LVAR_QUOTEDPART)
+				{
+					lptr->flag &= ~LVAR_QUOTEDPART;
+					state = LQPRS_WAITDELIMSTRICT;
+				}
 			}
-			else if (charlen == 1 && t_iseq(ptr, '*'))
+			else if ((lptr->flag & LVAR_QUOTEDPART) == 0)
 			{
-				if (lptr->start == ptr)
-					UNCHAR;
-				lptr->flag |= LVAR_ANYEND;
-				curqlevel->flag |= LVAR_ANYEND;
-			}
-			else if (charlen == 1 && t_iseq(ptr, '%'))
-			{
-				if (lptr->start == ptr)
-					UNCHAR;
-				lptr->flag |= LVAR_SUBLEXEME;
-				curqlevel->flag |= LVAR_SUBLEXEME;
-			}
-			else if (charlen == 1 && t_iseq(ptr, '|'))
-			{
-				lptr->len = ptr - lptr->start - escaped_count -
-					((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
-					((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-					((lptr->flag & LVAR_ANYEND) ? 1 : 0);
-				if (lptr->wlen > 255)
-					ereport(ERROR,
-							(errcode(ERRCODE_NAME_TOO_LONG),
-							 errmsg("name of level is too long"),
-							 errdetail("Name length is %d, must "
-								 "be < 256, in position %d.",
-								 lptr->wlen, pos)));
+				if (charlen == 1 && t_iseq(ptr, '@'))
+				{
+					if (lptr->start == ptr)
+						UNCHAR;
+					lptr->flag |= LVAR_INCASE;
+					curqlevel->flag |= LVAR_INCASE;
+				}
+				else if (charlen == 1 && t_iseq(ptr, '*'))
+				{
+					if (lptr->start == ptr)
+						UNCHAR;
+					lptr->flag |= LVAR_ANYEND;
+					curqlevel->flag |= LVAR_ANYEND;
+				}
+				else if (charlen == 1 && t_iseq(ptr, '%'))
+				{
+					if (lptr->start == ptr)
+						UNCHAR;
+					lptr->flag |= LVAR_SUBLEXEME;
+					curqlevel->flag |= LVAR_SUBLEXEME;
+				}
+				else if (charlen == 1 && t_iseq(ptr, '|'))
+				{
+					lptr->len = ptr - lptr->start - escaped_count -
+						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
+						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
+						((lptr->flag & LVAR_ANYEND) ? 1 : 0);
 
-				state = LQPRS_WAITVAR;
-			}
-			else if (charlen == 1 && t_iseq(ptr, '.'))
-			{
-				lptr->len = ptr - lptr->start - escaped_count -
-					((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
-					((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-					((lptr->flag & LVAR_ANYEND) ? 1 : 0);
-				if (lptr->wlen > 255)
-					ereport(ERROR,
-							(errcode(ERRCODE_NAME_TOO_LONG),
-							 errmsg("name of level is too long"),
-							 errdetail("Name length is %d, must "
-								 "be < 256, in position %d.",
-								 lptr->wlen, pos)));
+					if (state == LQPRS_WAITDELIMSTRICT)
+						adjust_quoted_nodeitem(lptr);
 
-				state = LQPRS_WAITLEVEL;
-				curqlevel = NEXTLEV(curqlevel);
+					if (lptr->wlen > 255)
+						ereport(ERROR,
+								(errcode(ERRCODE_NAME_TOO_LONG),
+								 errmsg("name of level is too long"),
+								 errdetail("Name length is %d, must "
+									 "be < 256, in position %d.",
+									 lptr->wlen, pos)));
+
+					state = LQPRS_WAITVAR;
+				}
+				else if (charlen == 1 && t_iseq(ptr, '.'))
+				{
+					lptr->len = ptr - lptr->start - escaped_count -
+						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
+						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
+						((lptr->flag & LVAR_ANYEND) ? 1 : 0);
+
+					if (state == LQPRS_WAITDELIMSTRICT)
+						adjust_quoted_nodeitem(lptr);
+
+					if (lptr->wlen > 255)
+						ereport(ERROR,
+								(errcode(ERRCODE_NAME_TOO_LONG),
+								 errmsg("name of level is too long"),
+								 errdetail("Name length is %d, must "
+									 "be < 256, in position %d.",
+									 lptr->wlen, pos)));
+
+					state = LQPRS_WAITLEVEL;
+					curqlevel = NEXTLEV(curqlevel);
+				}
+				else if (charlen == 1 && t_iseq(ptr, '\\'))
+				{
+					if (state == LQPRS_WAITDELIMSTRICT)
+						UNCHAR;
+					state = LQPRS_WAITESCAPED;
+				}
 			}
 			else if (charlen == 1 && t_iseq(ptr, '\\'))
 			{
-				if (lptr->flag)
+				if (state == LQPRS_WAITDELIMSTRICT)
+					UNCHAR;
+				if (lptr->flag & ~LVAR_QUOTEDPART)
 					UNCHAR;
 				state = LQPRS_WAITESCAPED;
 			}
 			else
-				if (lptr->flag)
+			{
+				if (state == LQPRS_WAITDELIMSTRICT)
 					UNCHAR;
+				if (lptr->flag & ~LVAR_QUOTEDPART)
+					UNCHAR;
+			}
 		}
 		else if (state == LQPRS_WAITOPEN)
 		{
@@ -656,12 +705,19 @@ lquery_in(PG_FUNCTION_ARGS)
 			elog(ERROR, "internal error in parser");
 
 		ptr += charlen;
-		if (state == LQPRS_WAITDELIM)
+		if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
 			lptr->wlen++;
 		pos++;
 	}
 
-	if (state == LQPRS_WAITDELIM)
+	if (lptr->flag & LVAR_QUOTEDPART)
+	{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("syntax error"),
+					 errdetail("Unexpected end of line.")));
+	}
+	else if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
 	{
 		if (lptr->start == ptr)
 			ereport(ERROR,
@@ -673,6 +729,10 @@ lquery_in(PG_FUNCTION_ARGS)
 			((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 			((lptr->flag & LVAR_INCASE) ? 1 : 0) -
 			((lptr->flag & LVAR_ANYEND) ? 1 : 0);
+
+					if (state == LQPRS_WAITDELIMSTRICT)
+						adjust_quoted_nodeitem(lptr);
+
 		if (lptr->len == 0)
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -776,7 +836,8 @@ lquery_out(PG_FUNCTION_ARGS)
 			   *ptr;
 	int			i,
 				j,
-				totallen = 1;
+				totallen = 1,
+				filled = 0;
 	lquery_level *curqlevel;
 	lquery_variant *curtlevel;
 
@@ -798,41 +859,48 @@ lquery_out(PG_FUNCTION_ARGS)
 		if (i != 0)
 		{
 			*ptr = '.';
-			ptr++;
+			ptr++; filled++;
 		}
 		if (curqlevel->numvar)
 		{
 			if (curqlevel->flag & LQL_NOT)
 			{
 				*ptr = '!';
-				ptr++;
+				ptr++; filled++;
 			}
 			curtlevel = LQL_FIRST(curqlevel);
 			for (j = 0; j < curqlevel->numvar; j++)
 			{
-				int escapes = 0;
+				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|");
 				if (j != 0)
 				{
 					*ptr = '|';
-					ptr++;
+					ptr++; filled++;
 				}
-				escapes = copy_escaped(curtlevel->name, ptr, curtlevel->len, "\\ .|");
-				ptr += curtlevel->len;
-				ptr += escapes;
+				if (filled + extra_bytes + curtlevel->len >= totallen)
+				{
+					buf = repalloc(buf, totallen + (extra_bytes + curtlevel->len) * 2);
+					totallen += (extra_bytes + curtlevel->len) * 2;
+					ptr = buf + filled;
+				}
+
+				copy_level(ptr, curtlevel->name, curtlevel->len, extra_bytes);
+				ptr += curtlevel->len + extra_bytes;
+
 				if ((curtlevel->flag & LVAR_SUBLEXEME))
 				{
 					*ptr = '%';
-					ptr++;
+					ptr++; filled++;
 				}
 				if ((curtlevel->flag & LVAR_INCASE))
 				{
 					*ptr = '@';
-					ptr++;
+					ptr++; filled++;
 				}
 				if ((curtlevel->flag & LVAR_ANYEND))
 				{
 					*ptr = '*';
-					ptr++;
+					ptr++; filled++;
 				}
 				curtlevel = LVAR_NEXT(curtlevel);
 			}
@@ -860,6 +928,7 @@ lquery_out(PG_FUNCTION_ARGS)
 			else
 				sprintf(ptr, "*{%d,%d}", curqlevel->low, curqlevel->high);
 			ptr = strchr(ptr, '\0');
+			filled = ptr - buf;
 		}
 
 		curqlevel = LQL_NEXT(curqlevel);

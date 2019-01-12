@@ -7808,9 +7808,9 @@ SELECT(
 (1 row)
 
 SELECT 'абв\|г'::lquery;
- lquery 
---------
- абв\|г
+ lquery  
+---------
+ "абв|г"
 (1 row)
 
 SELECT 'абв\|г'::ltree ~ 'абв\|г'::lquery;
