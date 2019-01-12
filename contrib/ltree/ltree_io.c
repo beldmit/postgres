@@ -609,6 +609,11 @@ lquery_in(PG_FUNCTION_ARGS)
 						UNCHAR;
 					state = LQPRS_WAITESCAPED;
 				}
+				else
+				{
+					if (state == LQPRS_WAITDELIMSTRICT)
+						UNCHAR;
+				}
 			}
 			else if (charlen == 1 && t_iseq(ptr, '\\'))
 			{
