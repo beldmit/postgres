@@ -142,7 +142,7 @@ bytes_to_escape(const char *start, const int len, const char *to_escape)
 }
 
 static int
-copy_escaped(char *dst, const char *src, int len, const char *to_escape)
+copy_escaped(char *dst, const char *src, int len)
 {
 	uint16 copied = 0;
 	int charlen;
@@ -152,7 +152,7 @@ copy_escaped(char *dst, const char *src, int len, const char *to_escape)
 	while (*src && copied < len)
 	{
 		charlen = pg_mblen(src);
-		if ((charlen == 1) && strchr(to_escape, *src))
+		if ((charlen == 1) && t_iseq(src, '"'))
 		{
 			*buf = '\\';
 			buf++;
@@ -187,7 +187,7 @@ copy_level(char *dst, const char *src, int len, int extra_bytes)
 	{
 		*dst = '"';
 		dst++;
-		copy_escaped(dst, src, len, "\"");
+		copy_escaped(dst, src, len);
 		dst[len + extra_bytes - 2] = '"';
 		dst++;
 		dst += extra_bytes - 2;
@@ -382,7 +382,6 @@ ltree_out(PG_FUNCTION_ARGS)
 	ltree_level *curlevel;
 	Size 	allocated = VARSIZE(in);
 	Size  filled = 0;
-	const char special[] = "\\ .";
 
 	ptr = buf = (char *) palloc(allocated);
 	curlevel = LTREE_FIRST(in);
@@ -396,7 +395,7 @@ ltree_out(PG_FUNCTION_ARGS)
 		}
 		if (curlevel->len > 0)
 		{
-			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, special);
+			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, "\\ .");
 			if (filled + extra_bytes + curlevel->len >= allocated)
 			{
 				buf = repalloc(buf, allocated + (extra_bytes + curlevel->len) * 2);
