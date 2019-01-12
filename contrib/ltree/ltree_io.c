@@ -452,6 +452,7 @@ lquery_in(PG_FUNCTION_ARGS)
 	int			charlen;
 	int			pos = 0;
 	int			escaped_count = 0;
+	int			real_levels = 0;
 
 	ptr = buf;
 	count_parts_ors(ptr, &levels, &numOR);
@@ -470,6 +471,7 @@ lquery_in(PG_FUNCTION_ARGS)
 		if (state == LQPRS_WAITLEVEL)
 		{
 			escaped_count = 0;
+			real_levels++;
 			if (charlen == 1) {
 				if (t_iseq(ptr, '!')) {
 					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
@@ -786,7 +788,7 @@ lquery_in(PG_FUNCTION_ARGS)
 
 	result = (lquery *) palloc0(totallen);
 	SET_VARSIZE(result, totallen);
-	result->numlevel = levels;
+	result->numlevel = real_levels;
 	result->firstgood = 0;
 	result->flag = 0;
 	if (hasnot)
@@ -870,7 +872,7 @@ lquery_out(PG_FUNCTION_ARGS)
 			curtlevel = LQL_FIRST(curqlevel);
 			for (j = 0; j < curqlevel->numvar; j++)
 			{
-				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|*");
+				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|!*@%");
 				if (j != 0)
 				{
 					*ptr = '|';
