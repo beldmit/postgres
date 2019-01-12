@@ -105,7 +105,10 @@ SELECT '1."*".4|3|"2".*{1,4}'::lquery; --XXX
 select '\% \@'::lquery;
 select '"\% \@"'::lquery;
 
-SELECT '"qwert"y.tu'::lquery
+SELECT '"qwert"y.tu'::lquery;
+SELECT 'a.""'::lquery;
+SELECT '"".""'::ltree;
+SELECT '"".""'::lquery;
 
 --failures
 select E'\\'::ltree; -- error

@@ -118,6 +118,9 @@ bytes_to_escape(const char *start, const int len, const char *to_escape)
 	int quotes  = 0;
 	const char *buf = start;
 
+	if (len == 0)
+		return 2;
+
 	while (*start && copied < len)
 	{
 		charlen = pg_mblen(buf);
@@ -300,6 +303,8 @@ ltree_in(PG_FUNCTION_ARGS)
 			if (!(charlen == 1 && t_iseq(ptr, '.')))
 				UNCHAR;
 
+			lptr->len = ptr - lptr->start - escaped_count;
+
 			adjust_quoted_nodeitem(lptr);
 			if (lptr->wlen > 255)
 				ereport(ERROR,
@@ -393,7 +398,7 @@ ltree_out(PG_FUNCTION_ARGS)
 			ptr++;
 			filled++;
 		}
-		if (curlevel->len > 0)
+		if (curlevel->len >= 0)
 		{
 			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, "\\ .");
 			if (filled + extra_bytes + curlevel->len >= allocated)
@@ -738,12 +743,6 @@ lquery_in(PG_FUNCTION_ARGS)
 
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
-
-		if (lptr->len == 0)
-			ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					 errmsg("syntax error"),
-					 errdetail("Unexpected end of line.")));
 
 		if (lptr->wlen > 255)
 			ereport(ERROR,
