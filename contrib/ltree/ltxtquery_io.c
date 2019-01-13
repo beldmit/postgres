@@ -243,11 +243,6 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 
 		state->buf += charlen;
 	}
-
-	if (*flag & LVAR_QUOTEDPART)
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("escaping syntax error")));
 }
 
 /*
