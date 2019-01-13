@@ -328,13 +328,13 @@ SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
-'\а\б\в\г\д')::ltree;
+'\a\b\c\d\e')::ltree;
 
-SELECT 'абв\|г'::lquery;
-SELECT 'абв\|г'::ltree ~ 'абв\|г'::lquery;
-SELECT 'абв|г'::ltree ~ 'абв*'::lquery; --true
-SELECT 'абв|г'::ltree ~ 'абв\*'::lquery; --false
-SELECT E'абв|\\.'::ltree ~ 'абв\|*'::lquery; --true
+SELECT 'abc\|d'::lquery;
+SELECT 'abc\|d'::ltree ~ 'abc\|d'::lquery;
+SELECT 'abc|d'::ltree ~ 'abc*'::lquery; --true
+SELECT 'abc|d'::ltree ~ 'abc\*'::lquery; --false
+SELECT E'abc|\\.'::ltree ~ 'abc\|*'::lquery; --true
 
 SELECT '""'::ltree;
 SELECT E'"\\""'::ltree;
