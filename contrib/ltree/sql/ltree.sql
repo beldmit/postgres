@@ -297,14 +297,14 @@ SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
 SELECT E'\\.'::ltree;
 SELECT E'\\ '::ltree;
 SELECT E'\\\\'::ltree;
-select E'\\a'::ltree;
-select E'\\n'::ltree;
-select E'x\\\\'::ltree;
-select E'x\\ '::ltree;
-select E'x\\.'::ltree;
-select E'x\\a'::ltree;
-select E'x\\n'::ltree;
-select 'a b.с d'::ltree;
+SELECT E'\\a'::ltree;
+SELECT E'\\n'::ltree;
+SELECT E'x\\\\'::ltree;
+SELECT E'x\\ '::ltree;
+SELECT E'x\\.'::ltree;
+SELECT E'x\\a'::ltree;
+SELECT E'x\\n'::ltree;
+SELECT 'a b.с d'::ltree;
 
 SELECT nlevel(E'Bottom\\.Test'::ltree);
 SELECT subpath(E'Bottom\\.'::ltree, 0, 1);
@@ -312,9 +312,9 @@ SELECT subpath(E'Bottom\\.'::ltree, 0, 1);
 SELECT subpath(E'a\\.b', 0, 1);
 SELECT subpath(E'a\\..b', 1, 1);
 SELECT subpath(E'a\\..\\b', 1, 1);
-select subpath(E'a b.с d'::ltree, 1, 1);
+SELECT subpath(E'a b.с d'::ltree, 1, 1);
 
-select(
+SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -346,7 +346,7 @@ SELECT '"ab"'::ltree;
 SELECT E'\\"ab"'::ltree;
 SELECT '"."'::ltree;
 SELECT E'".\\""'::ltree;
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -364,7 +364,7 @@ SELECT '"ab"'::lquery;
 SELECT E'\\"ab"'::lquery;
 SELECT '"."'::lquery;
 SELECT E'".\\""'::lquery;
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -397,8 +397,8 @@ SELECT 'q"wert"y"%@*.tu'::lquery;
 
 SELECT '1.*.4|3|"2".*{1,4}'::lquery; --XXX
 SELECT '1."*".4|3|"2".*{1,4}'::lquery; --XXX
-select '\% \@'::lquery;
-select '"\% \@"'::lquery;
+SELECT '\% \@'::lquery;
+SELECT '"\% \@"'::lquery;
 
 SELECT '"qwert"y.tu'::lquery;
 SELECT 'a.""'::lquery;
@@ -420,12 +420,12 @@ SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & "aw\\_qw"%*'::ltxtquery;
 SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
 
 --failures
-select E'\\'::ltree; -- error
-select E'n\\'::ltree; --error
+SELECT E'\\'::ltree; -- error
+SELECT E'n\\'::ltree; --error
 SELECT '"'::ltree;
-select '"a'::ltree;
-select '"a"."a'::ltree;
-select '"a."a"'::ltree;
+SELECT '"a'::ltree;
+SELECT '"a"."a'::ltree;
+SELECT '"a."a"'::ltree;
 
 SELECT(
 '01234567890123456789012345678901234567890123456789' ||
@@ -434,7 +434,7 @@ SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 'z\z\z\z\z\z')::ltree;
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -443,11 +443,11 @@ select(
 '\z\z\z\z\z\z"')::ltree;
 
 SELECT '"'::lquery;
-select '"a'::lquery;
-select '"a"."a'::lquery;
-select '"a."a"'::lquery;
+SELECT '"a'::lquery;
+SELECT '"a"."a'::lquery;
+SELECT '"a."a"'::lquery;
 
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -456,7 +456,7 @@ select(
 '\z\z\z\z\z\z"')::lquery;
 
 SELECT '"'::ltxtquery;
-select '"a'::ltxtquery;
-select '"a"."a'::ltxtquery;
-select '"a."a"'::ltxtquery;
+SELECT '"a'::ltxtquery;
+SELECT '"a"."a'::ltxtquery;
+SELECT '"a."a"'::ltxtquery;
 
