@@ -373,30 +373,30 @@ SELECT(
 '\z\z\z\z\z"')::lquery;
 
 SELECT '"1"'::lquery;
-SELECT '"2.*"'::lquery; --XXX
+SELECT '"2.*"'::lquery;
 SELECT '!"1"'::lquery;
 SELECT '!"1|"'::lquery;
 SELECT '4|3|"2"'::lquery;
 SELECT '"1".2'::lquery;
-SELECT '"1.4"|"3"|2'::lquery; --XXX
+SELECT '"1.4"|"3"|2'::lquery;
 SELECT '"1"."4"|"3"|"2"'::lquery;
 SELECT '"1"."0"'::lquery;
 SELECT '"1".0'::lquery;
 SELECT '"1".*'::lquery;
 SELECT '4|"3"|2.*'::lquery;
-SELECT '4|"3"|"2.*"'::lquery; --XXX
+SELECT '4|"3"|"2.*"'::lquery;
 SELECT '2."*"'::lquery;
 SELECT '"*".1."*"'::lquery;
-SELECT '"*.4"|3|2.*'::lquery; --
-SELECT '"*.4"|3|"2.*"'::lquery; --
+SELECT '"*.4"|3|2.*'::lquery;
+SELECT '"*.4"|3|"2.*"'::lquery;
 SELECT '1.*.4|3|2.*{,4}'::lquery;
 SELECT '1.*.4|3|2.*{1,}'::lquery;
 SELECT '1.*.4|3|2.*{1}'::lquery;
 SELECT '"qwerty"%@*.tu'::lquery;
 SELECT 'q"wert"y"%@*.tu'::lquery;
 
-SELECT '1.*.4|3|"2".*{1,4}'::lquery; --XXX
-SELECT '1."*".4|3|"2".*{1,4}'::lquery; --XXX
+SELECT '1.*.4|3|"2".*{1,4}'::lquery;
+SELECT '1."*".4|3|"2".*{1,4}'::lquery;
 SELECT '\% \@'::lquery;
 SELECT '"\% \@"'::lquery;
 
@@ -419,9 +419,12 @@ SELECT 'tree.awdfg_qwerty'::ltree @ 'tree & "aw_rw"%*'::ltxtquery;
 SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & "aw\\_qw"%*'::ltxtquery;
 SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
 
+SELECT 'a | ""'::ltxtquery;
+SELECT '"" & ""'::ltxtquery;
+--SELECT 'a.""'::ltxtquery;
 --failures
-SELECT E'\\'::ltree; -- error
-SELECT E'n\\'::ltree; --error
+SELECT E'\\'::ltree;
+SELECT E'n\\'::ltree;
 SELECT '"'::ltree;
 SELECT '"a'::ltree;
 SELECT '"a"."a'::ltree;
@@ -456,7 +459,8 @@ SELECT(
 '\z\z\z\z\z\z"')::lquery;
 
 SELECT '"'::ltxtquery;
+SELECT '"""'::ltxtquery;
 SELECT '"a'::ltxtquery;
-SELECT '"a"."a'::ltxtquery;
-SELECT '"a."a"'::ltxtquery;
+SELECT '"a" & "a'::ltxtquery;
+SELECT '"a | "a"'::ltxtquery;
 
