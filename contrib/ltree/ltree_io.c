@@ -71,7 +71,7 @@ count_parts_ors(const char *ptr, int *plevels, int *pORs)
  * Total amount of copied bytes is len
  */
 static void
-copy_unescaped(const char *src, char *dst, int len)
+copy_unescaped(char *dst, const char *src, int len)
 {
 	uint16 copied = 0;
 	int charlen;
@@ -367,7 +367,7 @@ ltree_in(PG_FUNCTION_ARGS)
 		curlevel->len = (uint16) lptr->len;
 		if (lptr->len > 0)
 		{
-			copy_unescaped(lptr->start, curlevel->name, lptr->len);
+			copy_unescaped(curlevel->name, lptr->start, lptr->len);
 		}
 		curlevel = LEVEL_NEXT(curlevel);
 		lptr++;
@@ -812,7 +812,7 @@ lquery_in(PG_FUNCTION_ARGS)
 				cur->totallen += MAXALIGN(LVAR_HDRSIZE + lptr->len);
 				lrptr->len = lptr->len;
 				lrptr->flag = lptr->flag;
-				copy_unescaped(lptr->start, lrptr->name, lptr->len);
+				copy_unescaped(lrptr->name, lptr->start, lptr->len);
 				lrptr->val = ltree_crc32_sz(lrptr->name, lptr->len);
 				lptr++;
 				lrptr = LVAR_NEXT(lrptr);
