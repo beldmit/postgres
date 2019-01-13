@@ -109,13 +109,19 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("escaping syntax error")));
+					else if (*flag & ~LVAR_QUOTEDPART)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("modifiers syntax error")));
 					else if (*flag & LVAR_QUOTEDPART)
 					{
 						*flag &= ~LVAR_QUOTEDPART;
 						state->state = ENDOPERAND;
 					}
 					else
+					{
 						*lenval += charlen;
+					}
 				}
 				else if ((*flag & LVAR_QUOTEDPART) == 0)
 				{
