@@ -20,6 +20,7 @@ PG_FUNCTION_INFO_V1(ltxtq_out);
 #define INOPERAND 2
 #define WAITOPERATOR	3
 #define WAITESCAPED 4
+#define ENDOPERAND 5
 
 /*
  * node of query tree, also used
@@ -96,44 +97,92 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 					*strval = state->buf;
 					*lenval = charlen;
 					*flag = 0;
+					if (charlen == 1 && t_iseq(state->buf, '"'))
+						*flag |= LVAR_QUOTEDPART;
 				}
 				break;
 			case INOPERAND:
-				if ((*(state->buf) == '\0') || t_isspace(state->buf))
+			case ENDOPERAND:
+				if (charlen == 1 && t_iseq(state->buf, '"'))
 				{
-					state->state = WAITOPERATOR;
-					return VAL;
-				}
-
-				if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@')
-					&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
-					&& !t_iseq(state->buf, '%')) )
-				{
-					if (*flag)
+					if (state->state == ENDOPERAND)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("modifiers syntax error")));
-					*lenval += charlen;
+					else if (*flag & LVAR_QUOTEDPART)
+					{
+						*flag &= ~LVAR_QUOTEDPART;
+						state->state = ENDOPERAND;
+					}
 				}
-				else if (charlen == 1 && t_iseq(state->buf, '%'))
-					*flag |= LVAR_SUBLEXEME;
-				else if (charlen == 1 && t_iseq(state->buf, '@'))
-					*flag |= LVAR_INCASE;
-				else if (charlen == 1 && t_iseq(state->buf, '*'))
-					*flag |= LVAR_ANYEND;
+				else if ((*flag & LVAR_QUOTEDPART) == 0)
+				{
+					if ((*(state->buf) == '\0') || t_isspace(state->buf))
+					{
+						state->state = WAITOPERATOR;
+						return VAL;
+					}
+
+					if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@')
+								&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
+								&& !t_iseq(state->buf, '%')) )
+					{
+						if (*flag & ~LVAR_QUOTEDPART)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("modifiers syntax error")));
+						*lenval += charlen;
+					}
+					else if (charlen == 1 && t_iseq(state->buf, '%'))
+						*flag |= LVAR_SUBLEXEME;
+					else if (charlen == 1 && t_iseq(state->buf, '@'))
+						*flag |= LVAR_INCASE;
+					else if (charlen == 1 && t_iseq(state->buf, '*'))
+						*flag |= LVAR_ANYEND;
+					else if (charlen == 1 && t_iseq(state->buf, '\\'))
+					{
+						if (*flag & ~LVAR_QUOTEDPART)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("modifiers syntax error")));
+
+						state->state = WAITESCAPED;
+					}
+					else
+					{
+						/*Adjust*/
+						if (state->state == ENDOPERAND)
+						{
+							(*strval)++;
+							(*lenval)--;
+						}
+						state->state = WAITOPERATOR;
+						return VAL;
+					}
+				}
 				else if (charlen == 1 && t_iseq(state->buf, '\\'))
 				{
-					if (*flag)
+					if (state->state == ENDOPERAND)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error")));
+								 errmsg("escaping syntax error")));
+					if (*flag & ~LVAR_QUOTEDPART)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("escaping syntax error")));
 
 					state->state = WAITESCAPED;
 				}
 				else
 				{
-					state->state = WAITOPERATOR;
-					return VAL;
+					if (state->state == ENDOPERAND)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error")));
+					if (*flag & ~LVAR_QUOTEDPART)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error")));
 				}
 				break;
 			case WAITESCAPED:
@@ -457,14 +506,14 @@ infix(INFIX *in, bool first)
 	if (in->curpol->type == VAL)
 	{
 		char	   *op = in->op + in->curpol->distance;
+		char	   *opend = strchr(op, '\0');
+		int 		 delta = opend - op;
+		int 		 extra_bytes = bytes_to_escape(op, delta, ". \\|!%@*");
 
 		RESIZEBUF(in, in->curpol->length * 2 + 5);
-		while (*op)
-		{
-			*(in->cur) = *op;
-			op++;
-			in->cur++;
-		}
+		copy_level(in->cur, op, delta, extra_bytes);
+		in->cur += delta + extra_bytes;
+
 		if (in->curpol->flag & LVAR_SUBLEXEME)
 		{
 			*(in->cur) = '%';

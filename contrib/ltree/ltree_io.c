@@ -109,7 +109,7 @@ copy_unescaped(const char *src, char *dst, int len)
  * If there are any quotes, we need to escape all of them and also initial and final quote, so
  * return 2 + number of quotes
  */
-static int
+int
 bytes_to_escape(const char *start, const int len, const char *to_escape)
 {
 	uint16 copied = 0;
@@ -173,7 +173,7 @@ copy_escaped(char *dst, const char *src, int len)
 	return escapes;
 }
 
-static void 
+void 
 copy_level(char *dst, const char *src, int len, int extra_bytes)
 {
 	if (extra_bytes == 0)

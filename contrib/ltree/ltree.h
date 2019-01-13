@@ -163,7 +163,8 @@ bool compare_subnode(ltree_level *t, char *q, int len,
 				int (*cmpptr) (const char *, const char *, size_t), bool anyend);
 ltree	   *lca_inner(ltree **a, int len);
 int			ltree_strncasecmp(const char *a, const char *b, size_t s);
-
+int			bytes_to_escape(const char *start, const int len, const char *to_escape);
+void 		copy_level(char *dst, const char *src, int len, int extra_bytes);
 /* fmgr macros for ltree objects */
 #define DatumGetLtreeP(X)			((ltree *) PG_DETOAST_DATUM(X))
 #define DatumGetLtreePCopy(X)		((ltree *) PG_DETOAST_DATUM_COPY(X))
