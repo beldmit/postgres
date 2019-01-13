@@ -108,7 +108,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 					if (state->state == ENDOPERAND)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("modifiers syntax error")));
+								 errmsg("escaping syntax error")));
 					else if (*flag & LVAR_QUOTEDPART)
 					{
 						*flag &= ~LVAR_QUOTEDPART;
@@ -150,7 +150,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						if (*flag & ~LVAR_QUOTEDPART)
 							ereport(ERROR,
 									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("modifiers syntax error")));
+									 errmsg("escaping syntax error")));
 
 						state->state = WAITESCAPED;
 						*lenval += charlen;
@@ -183,6 +183,11 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				}
 				else
 				{
+					if (*(state->buf) == '\0' && (*flag & LVAR_QUOTEDPART))
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("escaping syntax error")));
+
 					if (state->state == ENDOPERAND)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -230,6 +235,11 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 
 		state->buf += charlen;
 	}
+
+	if (*flag & LVAR_QUOTEDPART)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("escaping syntax error")));
 }
 
 /*
