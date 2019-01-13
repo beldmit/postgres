@@ -421,7 +421,7 @@ SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
 
 SELECT 'a | ""'::ltxtquery;
 SELECT '"" & ""'::ltxtquery;
---SELECT 'a.""'::ltxtquery;
+SELECT 'a.""'::ltxtquery;
 --failures
 SELECT E'\\'::ltree;
 SELECT E'n\\'::ltree;

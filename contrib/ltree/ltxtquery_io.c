@@ -114,6 +114,8 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						*flag &= ~LVAR_QUOTEDPART;
 						state->state = ENDOPERAND;
 					}
+					else
+						*lenval += charlen;
 				}
 				else if ((*flag & LVAR_QUOTEDPART) == 0)
 				{
