@@ -84,7 +84,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				{
 					state->state = WAITESCAPED;
 					*strval = state->buf;
-					*lenval = 0;
+					*lenval = 1;
 					*flag = 0;
 				}
 				else if (t_isspace(state->buf))
@@ -201,7 +201,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 							(errcode(ERRCODE_SYNTAX_ERROR),
 							 errmsg("escaping syntax error")));
 				}
-
+				*lenval += charlen;
 				state->state = INOPERAND;
 				break;
 			case WAITOPERATOR:
