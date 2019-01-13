@@ -179,6 +179,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 								 errmsg("escaping syntax error")));
 
 					state->state = WAITESCAPED;
+					*lenval += charlen;
 				}
 				else
 				{
@@ -232,6 +233,46 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 }
 
 /*
+ * This function is similar to copy_unescaped.
+ * It proceeds total_len bytes from src
+ * Copying all to dst skipping escapes
+ * Returns amount of skipped symbols
+ * */
+static int
+copy_skip_escapes(char *dst, const char *src, int total_len)
+{
+	uint16 copied = 0;
+	int charlen;
+	bool escaping = false;
+	int skipped = 0;
+
+	while (*src && (copied + skipped < total_len))
+	{
+		charlen = pg_mblen(src);
+		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0) {
+			escaping = 1;
+			src++;
+			skipped++;
+			continue;
+		};
+
+		if (copied + skipped + charlen > total_len)
+			elog(ERROR, "internal error during copying");
+
+		memcpy(dst, src, charlen);
+		src += charlen;
+		dst += charlen;
+		copied += charlen;
+		escaping = 0;
+	}
+
+	if (copied + skipped != total_len)
+		elog(ERROR, "internal error during copying");
+	
+	return skipped;
+}
+
+/*
  * push new one in polish notation reverse view
  */
 static void
@@ -263,13 +304,12 @@ pushquery(QPRS_STATE *state, int32 type, int32 val, int32 distance, int32 lenval
 static void
 pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 {
+	int skipped = 0;
+
 	if (lenval > 0xffff)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("word is too long")));
-
-	pushquery(state, type, ltree_crc32_sz(strval, lenval),
-			  state->curop - state->op, lenval, flag);
 
 	while (state->curop - state->op + lenval + 1 >= state->lenop)
 	{
@@ -279,11 +319,14 @@ pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 		state->op = (char *) repalloc((void *) state->op, state->lenop);
 		state->curop = state->op + tmp;
 	}
-	memcpy((void *) state->curop, (void *) strval, lenval);
-	state->curop += lenval;
+	skipped = copy_skip_escapes((void *) state->curop, (void *) strval, lenval);
+	pushquery(state, type, ltree_crc32_sz(state->curop, lenval - skipped),
+			  state->curop - state->op, lenval - skipped, flag);
+
+	state->curop += lenval - skipped;
 	*(state->curop) = '\0';
 	state->curop++;
-	state->sumlen += lenval + 1;
+	state->sumlen += lenval - skipped + 1;
 	return;
 }
 
