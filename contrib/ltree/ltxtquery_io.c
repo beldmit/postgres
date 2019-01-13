@@ -119,6 +119,12 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				{
 					if ((*(state->buf) == '\0') || t_isspace(state->buf))
 					{
+						/*Adjust*/
+						if (state->state == ENDOPERAND)
+						{
+							(*strval)++;
+							(*lenval)--;
+						}
 						state->state = WAITOPERATOR;
 						return VAL;
 					}
@@ -147,6 +153,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 									 errmsg("modifiers syntax error")));
 
 						state->state = WAITESCAPED;
+						*lenval += charlen;
 					}
 					else
 					{
@@ -183,6 +190,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("syntax error")));
+					*lenval += charlen;
 				}
 				break;
 			case WAITESCAPED:
