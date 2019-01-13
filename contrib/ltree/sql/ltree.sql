@@ -408,7 +408,6 @@ SELECT '"".""'::lquery;
 --ltxtquery
 SELECT '!"tree" & aWdf@*'::ltxtquery;
 SELECT '"!tree" & aWdf@*'::ltxtquery;
-SELECT '"!tree" & aWdf@*"'::ltxtquery;
 SELECT E'tr\\ee'::ltree @ E'\\t\\r\\e\\e'::ltxtquery;
 SELECT E'tr\\ee.awd\\fg'::ltree @ E'tre\\e & a\\Wdf@*'::ltxtquery;
 SELECT 'tree & aw_qw%*'::ltxtquery;
@@ -463,4 +462,4 @@ SELECT '"""'::ltxtquery;
 SELECT '"a'::ltxtquery;
 SELECT '"a" & "a'::ltxtquery;
 SELECT '"a | "a"'::ltxtquery;
-
+SELECT '"!tree" & aWdf@*"'::ltxtquery;

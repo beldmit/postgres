@@ -8172,12 +8172,6 @@ SELECT '"!tree" & aWdf@*'::ltxtquery;
  "!tree" & aWdf@*
 (1 row)
 
-SELECT '"!tree" & aWdf@*"'::ltxtquery;
-    ltxtquery     
-------------------
- "!tree" & aWdf@*
-(1 row)
-
 SELECT E'tr\\ee'::ltree @ E'\\t\\r\\e\\e'::ltxtquery;
  ?column? 
 ----------
@@ -8244,7 +8238,12 @@ SELECT '"" & ""'::ltxtquery;
  "" & ""
 (1 row)
 
---SELECT 'a.""'::ltxtquery;
+SELECT 'a.""'::ltxtquery;
+ ltxtquery 
+-----------
+ "a.\"\""
+(1 row)
+
 --failures
 SELECT E'\\'::ltree;
 ERROR:  syntax error
@@ -8340,4 +8339,8 @@ LINE 1: SELECT '"a" & "a'::ltxtquery;
 SELECT '"a | "a"'::ltxtquery;
 ERROR:  escaping syntax error
 LINE 1: SELECT '"a | "a"'::ltxtquery;
+               ^
+SELECT '"!tree" & aWdf@*"'::ltxtquery;
+ERROR:  modifiers syntax error
+LINE 1: SELECT '"!tree" & aWdf@*"'::ltxtquery;
                ^
