@@ -354,6 +354,71 @@ select(
 '01234567890123456789012345678901234567890123456789' ||
 '\z\z\z\z\z"')::ltree;
 
+SELECT '""'::lquery;
+SELECT E'"\\""'::lquery;
+SELECT '\"'::lquery;
+SELECT E'\\"'::lquery;
+SELECT 'a"b'::lquery;
+SELECT 'a\"b'::lquery;
+SELECT '"ab"'::lquery;
+SELECT E'\\"ab"'::lquery;
+SELECT '"."'::lquery;
+SELECT E'".\\""'::lquery;
+select(
+'"01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'\z\z\z\z\z"')::lquery;
+
+SELECT '"1"'::lquery;
+SELECT '"2.*"'::lquery; --XXX
+SELECT '!"1"'::lquery;
+SELECT '!"1|"'::lquery;
+SELECT '4|3|"2"'::lquery;
+SELECT '"1".2'::lquery;
+SELECT '"1.4"|"3"|2'::lquery; --XXX
+SELECT '"1"."4"|"3"|"2"'::lquery;
+SELECT '"1"."0"'::lquery;
+SELECT '"1".0'::lquery;
+SELECT '"1".*'::lquery;
+SELECT '4|"3"|2.*'::lquery;
+SELECT '4|"3"|"2.*"'::lquery; --XXX
+SELECT '2."*"'::lquery;
+SELECT '"*".1."*"'::lquery;
+SELECT '"*.4"|3|2.*'::lquery; --
+SELECT '"*.4"|3|"2.*"'::lquery; --
+SELECT '1.*.4|3|2.*{,4}'::lquery;
+SELECT '1.*.4|3|2.*{1,}'::lquery;
+SELECT '1.*.4|3|2.*{1}'::lquery;
+SELECT '"qwerty"%@*.tu'::lquery;
+SELECT 'q"wert"y"%@*.tu'::lquery;
+
+SELECT '1.*.4|3|"2".*{1,4}'::lquery; --XXX
+SELECT '1."*".4|3|"2".*{1,4}'::lquery; --XXX
+select '\% \@'::lquery;
+select '"\% \@"'::lquery;
+
+SELECT '"qwert"y.tu'::lquery;
+SELECT 'a.""'::lquery;
+SELECT '"".""'::ltree;
+SELECT '"".""'::lquery;
+
+--ltxtquery
+SELECT '!"tree" & aWdf@*'::ltxtquery;
+SELECT '"!tree" & aWdf@*'::ltxtquery;
+SELECT '"!tree" & aWdf@*"'::ltxtquery;
+SELECT E'tr\\ee'::ltree @ E'\\t\\r\\e\\e'::ltxtquery;
+SELECT E'tr\\ee.awd\\fg'::ltree @ E'tre\\e & a\\Wdf@*'::ltxtquery;
+SELECT 'tree & aw_qw%*'::ltxtquery;
+SELECT 'tree."awdfg"'::ltree @ E'tree & a\\Wdf@*'::ltxtquery;
+SELECT 'tree."awdfg"'::ltree @ E'tree & "a\\Wdf"@*'::ltxtquery;
+SELECT 'tree.awdfg_qwerty'::ltree @ 'tree & aw_qw%*'::ltxtquery;
+SELECT 'tree.awdfg_qwerty'::ltree @ 'tree & "aw_rw"%*'::ltxtquery;
+SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & "aw\\_qw"%*'::ltxtquery;
+SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
+
 --failures
 select E'\\'::ltree; -- error
 select E'n\\'::ltree; --error
@@ -377,4 +442,21 @@ select(
 '01234567890123456789012345678901234567890123456789' ||
 '\z\z\z\z\z\z"')::ltree;
 
+SELECT '"'::lquery;
+select '"a'::lquery;
+select '"a"."a'::lquery;
+select '"a."a"'::lquery;
+
+select(
+'"01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'\z\z\z\z\z\z"')::lquery;
+
+SELECT '"'::ltxtquery;
+select '"a'::ltxtquery;
+select '"a"."a'::ltxtquery;
+select '"a."a"'::ltxtquery;
 
