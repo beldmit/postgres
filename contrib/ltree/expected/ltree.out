@@ -7699,49 +7699,49 @@ SELECT E'\\\\'::ltree;
  "\"
 (1 row)
 
-select E'\\a'::ltree;
+SELECT E'\\a'::ltree;
  ltree 
 -------
  a
 (1 row)
 
-select E'\\n'::ltree;
+SELECT E'\\n'::ltree;
  ltree 
 -------
  n
 (1 row)
 
-select E'x\\\\'::ltree;
+SELECT E'x\\\\'::ltree;
  ltree 
 -------
  "x\"
 (1 row)
 
-select E'x\\ '::ltree;
+SELECT E'x\\ '::ltree;
  ltree 
 -------
  "x "
 (1 row)
 
-select E'x\\.'::ltree;
+SELECT E'x\\.'::ltree;
  ltree 
 -------
  "x."
 (1 row)
 
-select E'x\\a'::ltree;
+SELECT E'x\\a'::ltree;
  ltree 
 -------
  xa
 (1 row)
 
-select E'x\\n'::ltree;
+SELECT E'x\\n'::ltree;
  ltree 
 -------
  xn
 (1 row)
 
-select 'a b.с d'::ltree;
+SELECT 'a b.с d'::ltree;
     ltree    
 -------------
  "a b"."с d"
@@ -7777,13 +7777,13 @@ SELECT subpath(E'a\\..\\b', 1, 1);
  b
 (1 row)
 
-select subpath(E'a b.с d'::ltree, 1, 1);
+SELECT subpath(E'a b.с d'::ltree, 1, 1);
  subpath 
 ---------
  "с d"
 (1 row)
 
-select(
+SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -7840,7 +7840,7 @@ SELECT E'абв|\\.'::ltree ~ 'абв\|*'::lquery; --true
 SELECT '""'::ltree;
  ltree 
 -------
- 
+ ""
 (1 row)
 
 SELECT E'"\\""'::ltree;
@@ -7897,7 +7897,7 @@ SELECT E'".\\""'::ltree;
  ".\""
 (1 row)
 
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -7909,15 +7909,351 @@ select(
  0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789zzzzz
 (1 row)
 
+SELECT '""'::lquery;
+ lquery 
+--------
+ ""
+(1 row)
+
+SELECT E'"\\""'::lquery;
+ lquery 
+--------
+ "\""
+(1 row)
+
+SELECT '\"'::lquery;
+ lquery 
+--------
+ "\""
+(1 row)
+
+SELECT E'\\"'::lquery;
+ lquery 
+--------
+ "\""
+(1 row)
+
+SELECT 'a"b'::lquery;
+ lquery 
+--------
+ "a\"b"
+(1 row)
+
+SELECT 'a\"b'::lquery;
+ lquery 
+--------
+ "a\"b"
+(1 row)
+
+SELECT '"ab"'::lquery;
+ lquery 
+--------
+ ab
+(1 row)
+
+SELECT E'\\"ab"'::lquery;
+  lquery  
+----------
+ "\"ab\""
+(1 row)
+
+SELECT '"."'::lquery;
+ lquery 
+--------
+ "."
+(1 row)
+
+SELECT E'".\\""'::lquery;
+ lquery 
+--------
+ ".\""
+(1 row)
+
+SELECT(
+'"01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'\z\z\z\z\z"')::lquery;
+                                                                                                                             lquery                                                                                                                              
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789zzzzz
+(1 row)
+
+SELECT '"1"'::lquery;
+ lquery 
+--------
+ 1
+(1 row)
+
+SELECT '"2.*"'::lquery;
+ lquery 
+--------
+ "2.*"
+(1 row)
+
+SELECT '!"1"'::lquery;
+ lquery 
+--------
+ !1
+(1 row)
+
+SELECT '!"1|"'::lquery;
+ lquery 
+--------
+ !"1|"
+(1 row)
+
+SELECT '4|3|"2"'::lquery;
+ lquery 
+--------
+ 4|3|2
+(1 row)
+
+SELECT '"1".2'::lquery;
+ lquery 
+--------
+ 1.2
+(1 row)
+
+SELECT '"1.4"|"3"|2'::lquery;
+  lquery   
+-----------
+ "1.4"|3|2
+(1 row)
+
+SELECT '"1"."4"|"3"|"2"'::lquery;
+ lquery  
+---------
+ 1.4|3|2
+(1 row)
+
+SELECT '"1"."0"'::lquery;
+ lquery 
+--------
+ 1.0
+(1 row)
+
+SELECT '"1".0'::lquery;
+ lquery 
+--------
+ 1.0
+(1 row)
+
+SELECT '"1".*'::lquery;
+ lquery 
+--------
+ 1.*
+(1 row)
+
+SELECT '4|"3"|2.*'::lquery;
+ lquery  
+---------
+ 4|3|2.*
+(1 row)
+
+SELECT '4|"3"|"2.*"'::lquery;
+  lquery   
+-----------
+ 4|3|"2.*"
+(1 row)
+
+SELECT '2."*"'::lquery;
+ lquery 
+--------
+ 2."*"
+(1 row)
+
+SELECT '"*".1."*"'::lquery;
+  lquery   
+-----------
+ "*".1."*"
+(1 row)
+
+SELECT '"*.4"|3|2.*'::lquery;
+   lquery    
+-------------
+ "*.4"|3|2.*
+(1 row)
+
+SELECT '"*.4"|3|"2.*"'::lquery;
+    lquery     
+---------------
+ "*.4"|3|"2.*"
+(1 row)
+
+SELECT '1.*.4|3|2.*{,4}'::lquery;
+     lquery      
+-----------------
+ 1.*.4|3|2.*{,4}
+(1 row)
+
+SELECT '1.*.4|3|2.*{1,}'::lquery;
+     lquery      
+-----------------
+ 1.*.4|3|2.*{1,}
+(1 row)
+
+SELECT '1.*.4|3|2.*{1}'::lquery;
+     lquery     
+----------------
+ 1.*.4|3|2.*{1}
+(1 row)
+
+SELECT '"qwerty"%@*.tu'::lquery;
+    lquery    
+--------------
+ qwerty%@*.tu
+(1 row)
+
+SELECT 'q"wert"y"%@*.tu'::lquery;
+        lquery        
+----------------------
+ "q\"wert\"y\""%@*.tu
+(1 row)
+
+SELECT '1.*.4|3|"2".*{1,4}'::lquery;
+      lquery      
+------------------
+ 1.*.4|3|2.*{1,4}
+(1 row)
+
+SELECT '1."*".4|3|"2".*{1,4}'::lquery;
+       lquery       
+--------------------
+ 1."*".4|3|2.*{1,4}
+(1 row)
+
+SELECT '\% \@'::lquery;
+ lquery 
+--------
+ "% @"
+(1 row)
+
+SELECT '"\% \@"'::lquery;
+ lquery 
+--------
+ "% @"
+(1 row)
+
+SELECT '"qwert"y.tu'::lquery;
+ERROR:  syntax error at position 7
+LINE 1: SELECT '"qwert"y.tu'::lquery;
+               ^
+SELECT 'a.""'::lquery;
+ lquery 
+--------
+ a.""
+(1 row)
+
+SELECT '"".""'::ltree;
+ ltree 
+-------
+ "".""
+(1 row)
+
+SELECT '"".""'::lquery;
+ lquery 
+--------
+ "".""
+(1 row)
+
+--ltxtquery
+SELECT '!"tree" & aWdf@*'::ltxtquery;
+   ltxtquery    
+----------------
+ !tree & aWdf@*
+(1 row)
+
+SELECT '"!tree" & aWdf@*'::ltxtquery;
+    ltxtquery     
+------------------
+ "!tree" & aWdf@*
+(1 row)
+
+SELECT '"!tree" & aWdf@*"'::ltxtquery;
+    ltxtquery     
+------------------
+ "!tree" & aWdf@*
+(1 row)
+
+SELECT E'tr\\ee'::ltree @ E'\\t\\r\\e\\e'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT E'tr\\ee.awd\\fg'::ltree @ E'tre\\e & a\\Wdf@*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'tree & aw_qw%*'::ltxtquery;
+   ltxtquery    
+----------------
+ tree & aw_qw%*
+(1 row)
+
+SELECT 'tree."awdfg"'::ltree @ E'tree & a\\Wdf@*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'tree."awdfg"'::ltree @ E'tree & "a\\Wdf"@*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'tree.awdfg_qwerty'::ltree @ 'tree & aw_qw%*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'tree.awdfg_qwerty'::ltree @ 'tree & "aw_rw"%*'::ltxtquery;
+ ?column? 
+----------
+ f
+(1 row)
+
+SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & "aw\\_qw"%*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'a | ""'::ltxtquery;
+ ltxtquery 
+-----------
+ a | ""
+(1 row)
+
+SELECT '"" & ""'::ltxtquery;
+ ltxtquery 
+-----------
+ "" & ""
+(1 row)
+
+--SELECT 'a.""'::ltxtquery;
 --failures
-select E'\\'::ltree; -- error
+SELECT E'\\'::ltree;
 ERROR:  syntax error
-LINE 1: select E'\\'::ltree;
+LINE 1: SELECT E'\\'::ltree;
                ^
 DETAIL:  Unexpected end of line.
-select E'n\\'::ltree; --error
+SELECT E'n\\'::ltree;
 ERROR:  syntax error
-LINE 1: select E'n\\'::ltree;
+LINE 1: SELECT E'n\\'::ltree;
                ^
 DETAIL:  Unexpected end of line.
 SELECT '"'::ltree;
@@ -7925,19 +8261,19 @@ ERROR:  syntax error
 LINE 1: SELECT '"'::ltree;
                ^
 DETAIL:  Unexpected end of line.
-select '"a'::ltree;
+SELECT '"a'::ltree;
 ERROR:  syntax error
-LINE 1: select '"a'::ltree;
+LINE 1: SELECT '"a'::ltree;
                ^
 DETAIL:  Unexpected end of line.
-select '"a"."a'::ltree;
+SELECT '"a"."a'::ltree;
 ERROR:  syntax error
-LINE 1: select '"a"."a'::ltree;
+LINE 1: SELECT '"a"."a'::ltree;
                ^
 DETAIL:  Unexpected end of line.
-select '"a."a"'::ltree;
+SELECT '"a."a"'::ltree;
 ERROR:  syntax error at position 4
-LINE 1: select '"a."a"'::ltree;
+LINE 1: SELECT '"a."a"'::ltree;
                ^
 SELECT(
 '01234567890123456789012345678901234567890123456789' ||
@@ -7948,7 +8284,7 @@ SELECT(
 'z\z\z\z\z\z')::ltree;
 ERROR:  name of level is too long
 DETAIL:  Name length is 256, must be < 256, in position 261.
-select(
+SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -7957,3 +8293,51 @@ select(
 '\z\z\z\z\z\z"')::ltree;
 ERROR:  name of level is too long
 DETAIL:  Name length is 256, must be < 256, in position 264.
+SELECT '"'::lquery;
+ERROR:  syntax error
+LINE 1: SELECT '"'::lquery;
+               ^
+DETAIL:  Unexpected end of line.
+SELECT '"a'::lquery;
+ERROR:  syntax error
+LINE 1: SELECT '"a'::lquery;
+               ^
+DETAIL:  Unexpected end of line.
+SELECT '"a"."a'::lquery;
+ERROR:  syntax error
+LINE 1: SELECT '"a"."a'::lquery;
+               ^
+DETAIL:  Unexpected end of line.
+SELECT '"a."a"'::lquery;
+ERROR:  syntax error at position 4
+LINE 1: SELECT '"a."a"'::lquery;
+               ^
+SELECT(
+'"01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'\z\z\z\z\z\z"')::lquery;
+ERROR:  name of level is too long
+DETAIL:  Name length is 256, must be < 256, in position 264.
+SELECT '"'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"'::ltxtquery;
+               ^
+SELECT '"""'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"""'::ltxtquery;
+               ^
+SELECT '"a'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"a'::ltxtquery;
+               ^
+SELECT '"a" & "a'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"a" & "a'::ltxtquery;
+               ^
+SELECT '"a | "a"'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"a | "a"'::ltxtquery;
+               ^
