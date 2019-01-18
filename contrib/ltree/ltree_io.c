@@ -605,7 +605,11 @@ lquery_in(PG_FUNCTION_ARGS)
 				}
 				else
 				{
+					if (charlen == 1 && strchr("!{}", *ptr))
+						UNCHAR;
 					if (state == LQPRS_WAITDELIMSTRICT)
+						UNCHAR;
+					if (lptr->flag & ~LVAR_QUOTEDPART)
 						UNCHAR;
 				}
 			}
@@ -859,7 +863,7 @@ lquery_out(PG_FUNCTION_ARGS)
 			curtlevel = LQL_FIRST(curqlevel);
 			for (j = 0; j < curqlevel->numvar; j++)
 			{
-				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|!*@%");
+				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|!*@%{}");
 				if (j != 0)
 				{
 					*ptr = '|';
