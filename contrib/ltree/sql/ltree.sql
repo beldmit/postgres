@@ -1,5 +1,7 @@
 CREATE EXTENSION ltree;
 
+SET standard_conforming_strings=on;
+
 -- Check whether any of our opclasses fail amvalidate
 SELECT amname, opcname
 FROM pg_opclass opc LEFT JOIN pg_am am ON am.oid = opcmethod
