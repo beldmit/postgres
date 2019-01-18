@@ -206,6 +206,21 @@ adjust_quoted_nodeitem(nodeitem *lptr)
 	lptr->wlen -= 2;
 }
 
+static void
+check_level_length(const nodeitem *lptr, int pos)
+{
+	if (lptr->wlen == 0)
+		elog(ERROR, "zero length labels are forbidden");
+
+	if (lptr->wlen > 255)
+		ereport(ERROR,
+				(errcode(ERRCODE_NAME_TOO_LONG),
+				 errmsg("name of level is too long"),
+				 errdetail("Name length is %d, must "
+					 "be < 256, in position %d.",
+					 lptr->wlen, pos)));
+}
+
 Datum
 ltree_in(PG_FUNCTION_ARGS)
 {
@@ -269,14 +284,7 @@ ltree_in(PG_FUNCTION_ARGS)
 				if (t_iseq(ptr, '.') && !(lptr->flag & LVAR_QUOTEDPART))
 				{
 					lptr->len = ptr - lptr->start - escaped_count;
-
-					if (lptr->wlen > 255)
-						ereport(ERROR,
-								(errcode(ERRCODE_NAME_TOO_LONG),
-								 errmsg("name of level is too long"),
-								 errdetail("Name length is %d, must "
-									 "be < 256, in position %d.",
-									 lptr->wlen, pos)));
+					check_level_length(lptr, pos);
 
 					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 					lptr++;
@@ -301,13 +309,7 @@ ltree_in(PG_FUNCTION_ARGS)
 			lptr->len = ptr - lptr->start - escaped_count;
 
 			adjust_quoted_nodeitem(lptr);
-			if (lptr->wlen > 255)
-				ereport(ERROR,
-						(errcode(ERRCODE_NAME_TOO_LONG),
-						 errmsg("name of level is too long"),
-						 errdetail("Name length is %d, must "
-							 "be < 256, in position %d.",
-							 lptr->wlen, pos)));
+			check_level_length(lptr, pos);
 
 			totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 			lptr++;
@@ -335,13 +337,7 @@ ltree_in(PG_FUNCTION_ARGS)
 		if (state == LTPRS_WAITDELIMSTRICT)
 			adjust_quoted_nodeitem(lptr);
 
-		if (lptr->wlen > 255)
-			ereport(ERROR,
-					(errcode(ERRCODE_NAME_TOO_LONG),
-					 errmsg("name of level is too long"),
-					 errdetail("Name length is %d, must "
-						 "be < 256, in position %d.",
-						 lptr->wlen, pos)));
+		check_level_length(lptr, pos);
 
 		totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 		lptr++;
@@ -572,14 +568,7 @@ lquery_in(PG_FUNCTION_ARGS)
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
 
-					if (lptr->wlen > 255)
-						ereport(ERROR,
-								(errcode(ERRCODE_NAME_TOO_LONG),
-								 errmsg("name of level is too long"),
-								 errdetail("Name length is %d, must "
-									 "be < 256, in position %d.",
-									 lptr->wlen, pos)));
-
+					check_level_length(lptr, pos);
 					state = LQPRS_WAITVAR;
 				}
 				else if (charlen == 1 && t_iseq(ptr, '.'))
@@ -592,13 +581,7 @@ lquery_in(PG_FUNCTION_ARGS)
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
 
-					if (lptr->wlen > 255)
-						ereport(ERROR,
-								(errcode(ERRCODE_NAME_TOO_LONG),
-								 errmsg("name of level is too long"),
-								 errdetail("Name length is %d, must "
-									 "be < 256, in position %d.",
-									 lptr->wlen, pos)));
+					check_level_length(lptr, pos);
 
 					state = LQPRS_WAITLEVEL;
 					curqlevel = NEXTLEV(curqlevel);
@@ -736,16 +719,10 @@ lquery_in(PG_FUNCTION_ARGS)
 			((lptr->flag & LVAR_INCASE) ? 1 : 0) -
 			((lptr->flag & LVAR_ANYEND) ? 1 : 0);
 
-					if (state == LQPRS_WAITDELIMSTRICT)
-						adjust_quoted_nodeitem(lptr);
+		if (state == LQPRS_WAITDELIMSTRICT)
+			adjust_quoted_nodeitem(lptr);
 
-		if (lptr->wlen > 255)
-			ereport(ERROR,
-					(errcode(ERRCODE_NAME_TOO_LONG),
-					 errmsg("name of level is too long"),
-					 errdetail("Name length is %d, must "
-							   "be < 256, in position %d.",
-							   lptr->wlen, pos)));
+		check_level_length(lptr, pos);
 	}
 	else if (state == LQPRS_WAITOPEN)
 		curqlevel->high = 0xffff;
