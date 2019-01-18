@@ -407,7 +407,6 @@ SELECT '1.*.4|3|2.*{,4}'::lquery;
 SELECT '1.*.4|3|2.*{1,}'::lquery;
 SELECT '1.*.4|3|2.*{1}'::lquery;
 SELECT '"qwerty"%@*.tu'::lquery;
-SELECT 'q"wert"y"%@*.tu'::lquery;
 
 SELECT '1.*.4|3|"2".*{1,4}'::lquery;
 SELECT '1."*".4|3|"2".*{1,4}'::lquery;
@@ -483,7 +482,15 @@ SELECT '@b'::lquery;
 SELECT '{b'::lquery;
 SELECT '}b'::lquery;
 
+SELECT '!%b'::lquery;
+SELECT '!*b'::lquery;
+SELECT '!@b'::lquery;
+SELECT '!{b'::lquery;
+SELECT '!}b'::lquery;
+
 SELECT '"qwert"y.tu'::lquery;
+SELECT 'q"wert"y"%@*.tu'::lquery;
+
 SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
