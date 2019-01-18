@@ -358,10 +358,8 @@ SELECT(
 SELECT E'"\\""'::lquery;
 SELECT '\"'::lquery;
 SELECT E'\\"'::lquery;
-SELECT 'a"b'::lquery;
 SELECT 'a\"b'::lquery;
 SELECT '"ab"'::lquery;
-SELECT E'\\"ab"'::lquery;
 SELECT '"."'::lquery;
 SELECT E'".\\""'::lquery;
 SELECT(
@@ -448,6 +446,15 @@ SELECT '"'::lquery;
 SELECT '"a'::lquery;
 SELECT '"a"."a'::lquery;
 SELECT '"a."a"'::lquery;
+
+SELECT 'a"b'::lquery;
+SELECT E'\\"ab"'::lquery;
+SELECT 'a!b'::lquery;
+SELECT 'a%b'::lquery;
+SELECT 'a*b'::lquery;
+SELECT 'a@b'::lquery;
+SELECT 'a{b'::lquery;
+SELECT 'a}b'::lquery;
 
 SELECT(
 '"01234567890123456789012345678901234567890123456789' ||

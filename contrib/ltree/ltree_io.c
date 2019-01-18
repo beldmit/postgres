@@ -298,10 +298,15 @@ ltree_in(PG_FUNCTION_ARGS)
 				{
 					state = LTPRS_WAITESCAPED;
 				}
-				else if (t_iseq(ptr, '"') && (lptr->flag & LVAR_QUOTEDPART))
+				else if (t_iseq(ptr, '"'))
 				{
-					lptr->flag &= ~LVAR_QUOTEDPART;
-					state = LTPRS_WAITDELIMSTRICT;
+					if (lptr->flag & LVAR_QUOTEDPART)
+					{
+						lptr->flag &= ~LVAR_QUOTEDPART;
+						state = LTPRS_WAITDELIMSTRICT;
+					}
+					else /* Unescaped quote is forbidden */
+						UNCHAR;
 				}
 			}
 		}
@@ -538,6 +543,8 @@ lquery_in(PG_FUNCTION_ARGS)
 					lptr->flag &= ~LVAR_QUOTEDPART;
 					state = LQPRS_WAITDELIMSTRICT;
 				}
+				else
+					UNCHAR;
 			}
 			else if ((lptr->flag & LVAR_QUOTEDPART) == 0)
 			{
