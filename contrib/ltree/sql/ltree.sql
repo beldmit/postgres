@@ -474,6 +474,16 @@ SELECT 'a@b'::lquery;
 SELECT 'a{b'::lquery;
 SELECT 'a}b'::lquery;
 
+SELECT 'a!'::lquery;
+SELECT 'a{'::lquery;
+SELECT 'a}'::lquery;
+
+SELECT '%b'::lquery;
+SELECT '*b'::lquery;
+SELECT '@b'::lquery;
+SELECT '{b'::lquery;
+SELECT '}b'::lquery;
+
 SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
