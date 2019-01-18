@@ -181,19 +181,14 @@ copy_level(char *dst, const char *src, int len, int extra_bytes)
 	else if (extra_bytes == 2)
 	{
 		*dst = '"';
-		dst++;
-		memcpy(dst, src, len);
-		dst[len] = '"';
-		dst++;
+		memcpy(dst+1, src, len);
+		dst[len+1] = '"';
 	}
 	else
 	{
 		*dst = '"';
-		dst++;
-		copy_escaped(dst, src, len);
-		dst[len + extra_bytes - 2] = '"';
-		dst++;
-		dst += extra_bytes - 2;
+		copy_escaped(dst+1, src, len);
+		dst[len + extra_bytes - 1] = '"';
 	}
 }
 
