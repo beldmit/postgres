@@ -386,6 +386,20 @@ SELECT E'a\\{b'::lquery;
 SELECT E'a\\}b'::lquery;
 SELECT E'a\\|b'::lquery;
 
+SELECT '!"!b"'::lquery;
+SELECT '!"%b"'::lquery;
+SELECT '!"*b"'::lquery;
+SELECT '!"@b"'::lquery;
+SELECT '!"{b"'::lquery;
+SELECT '!"}b"'::lquery;
+
+SELECT E'!\\!b'::lquery;
+SELECT E'!\\%b'::lquery;
+SELECT E'!\\*b'::lquery;
+SELECT E'!\\@b'::lquery;
+SELECT E'!\\{b'::lquery;
+SELECT E'!\\}b'::lquery;
+
 SELECT '"1"'::lquery;
 SELECT '"2.*"'::lquery;
 SELECT '!"1"'::lquery;
