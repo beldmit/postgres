@@ -319,6 +319,11 @@ pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 {
 	int skipped = 0;
 
+	if (lenval == 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("empty labels are forbidden")));
+
 	if (lenval > 0xffff)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -333,6 +338,11 @@ pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 		state->curop = state->op + tmp;
 	}
 	skipped = copy_skip_escapes((void *) state->curop, (void *) strval, lenval);
+	if (lenval == skipped) /* Empty quoted literal */
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("empty labels are forbidden")));
+
 	pushquery(state, type, ltree_crc32_sz(state->curop, lenval - skipped),
 			  state->curop - state->op, lenval - skipped, flag);
 

@@ -210,7 +210,11 @@ static void
 check_level_length(const nodeitem *lptr, int pos)
 {
 	if (lptr->wlen == 0)
-		elog(ERROR, "zero length labels are forbidden");
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("name of level is empty"),
+				 errdetail("Name length is 0 in position %d.",
+					 pos)));
 
 	if (lptr->wlen > 255)
 		ereport(ERROR,
