@@ -341,10 +341,8 @@ SELECT E'abc|\\.'::ltree ~ 'abc\|*'::lquery; --true
 SELECT E'"\\""'::ltree;
 SELECT '\"'::ltree;
 SELECT E'\\"'::ltree;
-SELECT 'a"b'::ltree;
 SELECT 'a\"b'::ltree;
 SELECT '"ab"'::ltree;
-SELECT E'\\"ab"'::ltree;
 SELECT '"."'::ltree;
 SELECT E'".\\""'::ltree;
 SELECT(
@@ -416,7 +414,6 @@ SELECT '1."*".4|3|"2".*{1,4}'::lquery;
 SELECT '\% \@'::lquery;
 SELECT '"\% \@"'::lquery;
 
-SELECT '"qwert"y.tu'::lquery;
 --ltxtquery
 SELECT '!"tree" & aWdf@*'::ltxtquery;
 SELECT '"!tree" & aWdf@*'::ltxtquery;
@@ -436,6 +433,8 @@ SELECT E'n\\'::ltree;
 SELECT '"'::ltree;
 SELECT '"a'::ltree;
 SELECT '""'::ltree;
+SELECT 'a"b'::ltree;
+SELECT E'\\"ab"'::ltree;
 SELECT '"a"."a'::ltree;
 SELECT '"a."a"'::ltree;
 SELECT '"".a'::ltree;
@@ -484,6 +483,7 @@ SELECT '@b'::lquery;
 SELECT '{b'::lquery;
 SELECT '}b'::lquery;
 
+SELECT '"qwert"y.tu'::lquery;
 SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
