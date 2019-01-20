@@ -494,7 +494,7 @@ lquery_in(PG_FUNCTION_ARGS)
 					curqlevel->numvar = 1;
 					state = LQPRS_WAITESCAPED;
 				}
-				else if (t_iseq(ptr, '.') || t_iseq(ptr, '|')) {
+				else if (strchr(".|@%{}", *ptr)) {
 					UNCHAR;
 				} else {
 					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
