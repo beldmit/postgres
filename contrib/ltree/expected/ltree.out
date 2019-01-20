@@ -7838,12 +7838,6 @@ SELECT E'abc|\\.'::ltree ~ 'abc\|*'::lquery; --true
  t
 (1 row)
 
-SELECT '""'::ltree;
- ltree 
--------
- ""
-(1 row)
-
 SELECT E'"\\""'::ltree;
  ltree 
 -------
@@ -7862,12 +7856,6 @@ SELECT E'\\"'::ltree;
  "\""
 (1 row)
 
-SELECT 'a"b'::ltree;
- ltree  
---------
- "a\"b"
-(1 row)
-
 SELECT 'a\"b'::ltree;
  ltree  
 --------
@@ -7878,12 +7866,6 @@ SELECT '"ab"'::ltree;
  ltree 
 -------
  ab
-(1 row)
-
-SELECT E'\\"ab"'::ltree;
-  ltree   
-----------
- "\"ab\""
 (1 row)
 
 SELECT '"."'::ltree;
@@ -7910,12 +7892,6 @@ SELECT(
  0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789zzzzz
 (1 row)
 
-SELECT '""'::lquery;
- lquery 
---------
- ""
-(1 row)
-
 SELECT E'"\\""'::lquery;
  lquery 
 --------
@@ -7934,12 +7910,6 @@ SELECT E'\\"'::lquery;
  "\""
 (1 row)
 
-SELECT 'a"b'::lquery;
- lquery 
---------
- "a\"b"
-(1 row)
-
 SELECT 'a\"b'::lquery;
  lquery 
 --------
@@ -7950,12 +7920,6 @@ SELECT '"ab"'::lquery;
  lquery 
 --------
  ab
-(1 row)
-
-SELECT E'\\"ab"'::lquery;
-  lquery  
-----------
- "\"ab\""
 (1 row)
 
 SELECT '"."'::lquery;
@@ -7980,6 +7944,174 @@ SELECT(
                                                                                                                              lquery                                                                                                                              
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789zzzzz
+(1 row)
+
+SELECT E'"a\\"b"'::lquery;
+ lquery 
+--------
+ "a\"b"
+(1 row)
+
+SELECT '"a!b"'::lquery;
+ lquery 
+--------
+ "a!b"
+(1 row)
+
+SELECT '"a%b"'::lquery;
+ lquery 
+--------
+ "a%b"
+(1 row)
+
+SELECT '"a*b"'::lquery;
+ lquery 
+--------
+ "a*b"
+(1 row)
+
+SELECT '"a@b"'::lquery;
+ lquery 
+--------
+ "a@b"
+(1 row)
+
+SELECT '"a{b"'::lquery;
+ lquery 
+--------
+ "a{b"
+(1 row)
+
+SELECT '"a}b"'::lquery;
+ lquery 
+--------
+ "a}b"
+(1 row)
+
+SELECT '"a|b"'::lquery;
+ lquery 
+--------
+ "a|b"
+(1 row)
+
+SELECT E'a\\"b'::lquery;
+ lquery 
+--------
+ "a\"b"
+(1 row)
+
+SELECT E'a\\!b'::lquery;
+ lquery 
+--------
+ "a!b"
+(1 row)
+
+SELECT E'a\\%b'::lquery;
+ lquery 
+--------
+ "a%b"
+(1 row)
+
+SELECT E'a\\*b'::lquery;
+ lquery 
+--------
+ "a*b"
+(1 row)
+
+SELECT E'a\\@b'::lquery;
+ lquery 
+--------
+ "a@b"
+(1 row)
+
+SELECT E'a\\{b'::lquery;
+ lquery 
+--------
+ "a{b"
+(1 row)
+
+SELECT E'a\\}b'::lquery;
+ lquery 
+--------
+ "a}b"
+(1 row)
+
+SELECT E'a\\|b'::lquery;
+ lquery 
+--------
+ "a|b"
+(1 row)
+
+SELECT '!"!b"'::lquery;
+ lquery 
+--------
+ !"!b"
+(1 row)
+
+SELECT '!"%b"'::lquery;
+ lquery 
+--------
+ !"%b"
+(1 row)
+
+SELECT '!"*b"'::lquery;
+ lquery 
+--------
+ !"*b"
+(1 row)
+
+SELECT '!"@b"'::lquery;
+ lquery 
+--------
+ !"@b"
+(1 row)
+
+SELECT '!"{b"'::lquery;
+ lquery 
+--------
+ !"{b"
+(1 row)
+
+SELECT '!"}b"'::lquery;
+ lquery 
+--------
+ !"}b"
+(1 row)
+
+SELECT E'!\\!b'::lquery;
+ lquery 
+--------
+ !"!b"
+(1 row)
+
+SELECT E'!\\%b'::lquery;
+ lquery 
+--------
+ !"%b"
+(1 row)
+
+SELECT E'!\\*b'::lquery;
+ lquery 
+--------
+ !"*b"
+(1 row)
+
+SELECT E'!\\@b'::lquery;
+ lquery 
+--------
+ !"@b"
+(1 row)
+
+SELECT E'!\\{b'::lquery;
+ lquery 
+--------
+ !"{b"
+(1 row)
+
+SELECT E'!\\}b'::lquery;
+ lquery 
+--------
+ !"}b"
 (1 row)
 
 SELECT '"1"'::lquery;
@@ -8108,12 +8240,6 @@ SELECT '"qwerty"%@*.tu'::lquery;
  qwerty%@*.tu
 (1 row)
 
-SELECT 'q"wert"y"%@*.tu'::lquery;
-        lquery        
-----------------------
- "q\"wert\"y\""%@*.tu
-(1 row)
-
 SELECT '1.*.4|3|"2".*{1,4}'::lquery;
       lquery      
 ------------------
@@ -8138,26 +8264,28 @@ SELECT '"\% \@"'::lquery;
  "% @"
 (1 row)
 
-SELECT '"qwert"y.tu'::lquery;
-ERROR:  syntax error at position 7
-LINE 1: SELECT '"qwert"y.tu'::lquery;
-               ^
-SELECT 'a.""'::lquery;
- lquery 
---------
- a.""
+SELECT E'\\aa.b.c.d.e'::ltree ~ 'A@.b.c.d.e';
+ ?column? 
+----------
+ f
 (1 row)
 
-SELECT '"".""'::ltree;
- ltree 
--------
- "".""
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ 'A*.b.c.d.e';
+ ?column? 
+----------
+ f
 (1 row)
 
-SELECT '"".""'::lquery;
- lquery 
---------
- "".""
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ E'A*@.b.c.d.\\e';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ E'A*@|\\g.b.c.d.e';
+ ?column? 
+----------
+ t
 (1 row)
 
 --ltxtquery
@@ -8227,22 +8355,400 @@ SELECT 'tree.awdfg_qwerty'::ltree @ E'tree & aw\\_qw%*'::ltxtquery;
  t
 (1 row)
 
-SELECT 'a | ""'::ltxtquery;
+SELECT E'"a\\"b"'::ltxtquery;
  ltxtquery 
 -----------
- a | ""
+ "a\"b"
 (1 row)
 
-SELECT '"" & ""'::ltxtquery;
+SELECT '"a!b"'::ltxtquery;
  ltxtquery 
 -----------
- "" & ""
+ "a!b"
 (1 row)
 
-SELECT 'a.""'::ltxtquery;
+SELECT '"a%b"'::ltxtquery;
  ltxtquery 
 -----------
- "a.\"\""
+ "a%b"
+(1 row)
+
+SELECT '"a*b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a*b"
+(1 row)
+
+SELECT '"a@b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a@b"
+(1 row)
+
+SELECT '"a{b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a{b"
+(1 row)
+
+SELECT '"a}b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a}b"
+(1 row)
+
+SELECT '"a|b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a|b"
+(1 row)
+
+SELECT '"a&b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a&b"
+(1 row)
+
+SELECT '"a(b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a(b"
+(1 row)
+
+SELECT '"a)b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a)b"
+(1 row)
+
+SELECT E'a\\"b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a\"b"
+(1 row)
+
+SELECT E'a\\!b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a!b"
+(1 row)
+
+SELECT E'a\\%b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a%b"
+(1 row)
+
+SELECT E'a\\*b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a*b"
+(1 row)
+
+SELECT E'a\\@b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a@b"
+(1 row)
+
+SELECT E'a\\{b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a{b"
+(1 row)
+
+SELECT E'a\\}b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a}b"
+(1 row)
+
+SELECT E'a\\|b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a|b"
+(1 row)
+
+SELECT E'a\\&b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a&b"
+(1 row)
+
+SELECT E'a\\(b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a(b"
+(1 row)
+
+SELECT E'a\\)b'::ltxtquery;
+ ltxtquery 
+-----------
+ "a)b"
+(1 row)
+
+SELECT E'"\\"b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "\"b"
+(1 row)
+
+SELECT '"!b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "!b"
+(1 row)
+
+SELECT '"%b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "%b"
+(1 row)
+
+SELECT '"*b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "*b"
+(1 row)
+
+SELECT '"@b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "@b"
+(1 row)
+
+SELECT '"{b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "{b"
+(1 row)
+
+SELECT '"}b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "}b"
+(1 row)
+
+SELECT '"|b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "|b"
+(1 row)
+
+SELECT '"&b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "&b"
+(1 row)
+
+SELECT '"(b"'::ltxtquery;
+ ltxtquery 
+-----------
+ "(b"
+(1 row)
+
+SELECT '")b"'::ltxtquery;
+ ltxtquery 
+-----------
+ ")b"
+(1 row)
+
+SELECT E'\\"b'::ltxtquery;
+ ltxtquery 
+-----------
+ "\"b"
+(1 row)
+
+SELECT E'\\!b'::ltxtquery;
+ ltxtquery 
+-----------
+ "!b"
+(1 row)
+
+SELECT E'\\%b'::ltxtquery;
+ ltxtquery 
+-----------
+ "%b"
+(1 row)
+
+SELECT E'\\*b'::ltxtquery;
+ ltxtquery 
+-----------
+ "*b"
+(1 row)
+
+SELECT E'\\@b'::ltxtquery;
+ ltxtquery 
+-----------
+ "@b"
+(1 row)
+
+SELECT E'\\{b'::ltxtquery;
+ ltxtquery 
+-----------
+ "{b"
+(1 row)
+
+SELECT E'\\}b'::ltxtquery;
+ ltxtquery 
+-----------
+ "}b"
+(1 row)
+
+SELECT E'\\|b'::ltxtquery;
+ ltxtquery 
+-----------
+ "|b"
+(1 row)
+
+SELECT E'\\&b'::ltxtquery;
+ ltxtquery 
+-----------
+ "&b"
+(1 row)
+
+SELECT E'\\(b'::ltxtquery;
+ ltxtquery 
+-----------
+ "(b"
+(1 row)
+
+SELECT E'\\)b'::ltxtquery;
+ ltxtquery 
+-----------
+ ")b"
+(1 row)
+
+SELECT E'"a\\""'::ltxtquery;
+ ltxtquery 
+-----------
+ "a\""
+(1 row)
+
+SELECT '"a!"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a!"
+(1 row)
+
+SELECT '"a%"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a%"
+(1 row)
+
+SELECT '"a*"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a*"
+(1 row)
+
+SELECT '"a@"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a@"
+(1 row)
+
+SELECT '"a{"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a{"
+(1 row)
+
+SELECT '"a}"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a}"
+(1 row)
+
+SELECT '"a|"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a|"
+(1 row)
+
+SELECT '"a&"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a&"
+(1 row)
+
+SELECT '"a("'::ltxtquery;
+ ltxtquery 
+-----------
+ "a("
+(1 row)
+
+SELECT '"a)"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a)"
+(1 row)
+
+SELECT E'a\\"'::ltxtquery;
+ ltxtquery 
+-----------
+ "a\""
+(1 row)
+
+SELECT E'a\\!'::ltxtquery;
+ ltxtquery 
+-----------
+ "a!"
+(1 row)
+
+SELECT E'a\\%'::ltxtquery;
+ ltxtquery 
+-----------
+ "a%"
+(1 row)
+
+SELECT E'a\\*'::ltxtquery;
+ ltxtquery 
+-----------
+ "a*"
+(1 row)
+
+SELECT E'a\\@'::ltxtquery;
+ ltxtquery 
+-----------
+ "a@"
+(1 row)
+
+SELECT E'a\\{'::ltxtquery;
+ ltxtquery 
+-----------
+ "a{"
+(1 row)
+
+SELECT E'a\\}'::ltxtquery;
+ ltxtquery 
+-----------
+ "a}"
+(1 row)
+
+SELECT E'a\\|'::ltxtquery;
+ ltxtquery 
+-----------
+ "a|"
+(1 row)
+
+SELECT E'a\\&'::ltxtquery;
+ ltxtquery 
+-----------
+ "a&"
+(1 row)
+
+SELECT E'a\\('::ltxtquery;
+ ltxtquery 
+-----------
+ "a("
+(1 row)
+
+SELECT E'a\\)'::ltxtquery;
+ ltxtquery 
+-----------
+ "a)"
 (1 row)
 
 --failures
@@ -8266,6 +8772,19 @@ ERROR:  syntax error
 LINE 1: SELECT '"a'::ltree;
                ^
 DETAIL:  Unexpected end of line.
+SELECT '""'::ltree;
+ERROR:  name of level is empty
+LINE 1: SELECT '""'::ltree;
+               ^
+DETAIL:  Name length is 0 in position 2.
+SELECT 'a"b'::ltree;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a"b'::ltree;
+               ^
+SELECT E'\\"ab"'::ltree;
+ERROR:  syntax error at position 4
+LINE 1: SELECT E'\\"ab"'::ltree;
+               ^
 SELECT '"a"."a'::ltree;
 ERROR:  syntax error
 LINE 1: SELECT '"a"."a'::ltree;
@@ -8275,6 +8794,36 @@ SELECT '"a."a"'::ltree;
 ERROR:  syntax error at position 4
 LINE 1: SELECT '"a."a"'::ltree;
                ^
+SELECT '"".a'::ltree;
+ERROR:  name of level is empty
+LINE 1: SELECT '"".a'::ltree;
+               ^
+DETAIL:  Name length is 0 in position 2.
+SELECT 'a.""'::ltree;
+ERROR:  name of level is empty
+LINE 1: SELECT 'a.""'::ltree;
+               ^
+DETAIL:  Name length is 0 in position 4.
+SELECT '"".""'::ltree;
+ERROR:  name of level is empty
+LINE 1: SELECT '"".""'::ltree;
+               ^
+DETAIL:  Name length is 0 in position 2.
+SELECT '""'::lquery;
+ERROR:  name of level is empty
+LINE 1: SELECT '""'::lquery;
+               ^
+DETAIL:  Name length is 0 in position 2.
+SELECT '"".""'::lquery;
+ERROR:  name of level is empty
+LINE 1: SELECT '"".""'::lquery;
+               ^
+DETAIL:  Name length is 0 in position 2.
+SELECT 'a.""'::lquery;
+ERROR:  name of level is empty
+LINE 1: SELECT 'a.""'::lquery;
+               ^
+DETAIL:  Name length is 0 in position 4.
 SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -8312,6 +8861,98 @@ SELECT '"a."a"'::lquery;
 ERROR:  syntax error at position 4
 LINE 1: SELECT '"a."a"'::lquery;
                ^
+SELECT E'\\"ab"'::lquery;
+ERROR:  syntax error at position 4
+LINE 1: SELECT E'\\"ab"'::lquery;
+               ^
+SELECT 'a"b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a"b'::lquery;
+               ^
+SELECT 'a!b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a!b'::lquery;
+               ^
+SELECT 'a%b'::lquery;
+ERROR:  syntax error at position 2
+LINE 1: SELECT 'a%b'::lquery;
+               ^
+SELECT 'a*b'::lquery;
+ERROR:  syntax error at position 2
+LINE 1: SELECT 'a*b'::lquery;
+               ^
+SELECT 'a@b'::lquery;
+ERROR:  syntax error at position 2
+LINE 1: SELECT 'a@b'::lquery;
+               ^
+SELECT 'a{b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a{b'::lquery;
+               ^
+SELECT 'a}b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a}b'::lquery;
+               ^
+SELECT 'a!'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a!'::lquery;
+               ^
+SELECT 'a{'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a{'::lquery;
+               ^
+SELECT 'a}'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'a}'::lquery;
+               ^
+SELECT '%b'::lquery;
+ERROR:  syntax error at position 0
+LINE 1: SELECT '%b'::lquery;
+               ^
+SELECT '*b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '*b'::lquery;
+               ^
+SELECT '@b'::lquery;
+ERROR:  syntax error at position 0
+LINE 1: SELECT '@b'::lquery;
+               ^
+SELECT '{b'::lquery;
+ERROR:  syntax error at position 0
+LINE 1: SELECT '{b'::lquery;
+               ^
+SELECT '}b'::lquery;
+ERROR:  syntax error at position 0
+LINE 1: SELECT '}b'::lquery;
+               ^
+SELECT '!%b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '!%b'::lquery;
+               ^
+SELECT '!*b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '!*b'::lquery;
+               ^
+SELECT '!@b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '!@b'::lquery;
+               ^
+SELECT '!{b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '!{b'::lquery;
+               ^
+SELECT '!}b'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT '!}b'::lquery;
+               ^
+SELECT '"qwert"y.tu'::lquery;
+ERROR:  syntax error at position 7
+LINE 1: SELECT '"qwert"y.tu'::lquery;
+               ^
+SELECT 'q"wert"y"%@*.tu'::lquery;
+ERROR:  syntax error at position 1
+LINE 1: SELECT 'q"wert"y"%@*.tu'::lquery;
+               ^
 SELECT(
 '"01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
@@ -8321,6 +8962,18 @@ SELECT(
 '\z\z\z\z\z\z"')::lquery;
 ERROR:  name of level is too long
 DETAIL:  Name length is 256, must be < 256, in position 264.
+SELECT 'a | ""'::ltxtquery;
+ERROR:  empty labels are forbidden
+LINE 1: SELECT 'a | ""'::ltxtquery;
+               ^
+SELECT '"" & ""'::ltxtquery;
+ERROR:  empty labels are forbidden
+LINE 1: SELECT '"" & ""'::ltxtquery;
+               ^
+SELECT 'a.""'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT 'a.""'::ltxtquery;
+               ^
 SELECT '"'::ltxtquery;
 ERROR:  escaping syntax error
 LINE 1: SELECT '"'::ltxtquery;
@@ -8344,4 +8997,120 @@ LINE 1: SELECT '"a | "a"'::ltxtquery;
 SELECT '"!tree" & aWdf@*"'::ltxtquery;
 ERROR:  modifiers syntax error
 LINE 1: SELECT '"!tree" & aWdf@*"'::ltxtquery;
+               ^
+SELECT 'a"b'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT 'a"b'::ltxtquery;
+               ^
+SELECT 'a!b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a!b'::ltxtquery;
+               ^
+SELECT 'a%b'::ltxtquery;
+ERROR:  modifiers syntax error
+LINE 1: SELECT 'a%b'::ltxtquery;
+               ^
+SELECT 'a*b'::ltxtquery;
+ERROR:  modifiers syntax error
+LINE 1: SELECT 'a*b'::ltxtquery;
+               ^
+SELECT 'a@b'::ltxtquery;
+ERROR:  modifiers syntax error
+LINE 1: SELECT 'a@b'::ltxtquery;
+               ^
+SELECT 'a{b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a{b'::ltxtquery;
+               ^
+SELECT 'a}b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a}b'::ltxtquery;
+               ^
+SELECT 'a|b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a|b'::ltxtquery;
+               ^
+SELECT 'a&b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a&b'::ltxtquery;
+               ^
+SELECT 'a(b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a(b'::ltxtquery;
+               ^
+SELECT 'a)b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a)b'::ltxtquery;
+               ^
+SELECT '"b'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT '"b'::ltxtquery;
+               ^
+SELECT '%b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '%b'::ltxtquery;
+               ^
+SELECT '*b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '*b'::ltxtquery;
+               ^
+SELECT '@b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '@b'::ltxtquery;
+               ^
+SELECT '{b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '{b'::ltxtquery;
+               ^
+SELECT '}b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '}b'::ltxtquery;
+               ^
+SELECT '|b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '|b'::ltxtquery;
+               ^
+SELECT '&b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT '&b'::ltxtquery;
+               ^
+SELECT '(b'::ltxtquery;
+ERROR:  syntax error
+LINE 1: SELECT '(b'::ltxtquery;
+               ^
+SELECT ')b'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT ')b'::ltxtquery;
+               ^
+SELECT 'a"'::ltxtquery;
+ERROR:  escaping syntax error
+LINE 1: SELECT 'a"'::ltxtquery;
+               ^
+SELECT 'a!'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a!'::ltxtquery;
+               ^
+SELECT 'a{'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a{'::ltxtquery;
+               ^
+SELECT 'a}'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a}'::ltxtquery;
+               ^
+SELECT 'a|'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a|'::ltxtquery;
+               ^
+SELECT 'a&'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a&'::ltxtquery;
+               ^
+SELECT 'a('::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a('::ltxtquery;
+               ^
+SELECT 'a)'::ltxtquery;
+ERROR:  unquoted special symbol
+LINE 1: SELECT 'a)'::ltxtquery;
                ^
