@@ -599,3 +599,16 @@ SELECT '"a'::ltxtquery;
 SELECT '"a" & "a'::ltxtquery;
 SELECT '"a | "a"'::ltxtquery;
 SELECT '"!tree" & aWdf@*"'::ltxtquery;
+
+SELECT 'a"b'::lquery;
+SELECT 'a!b'::lquery;
+SELECT 'a%b'::lquery;
+SELECT 'a*b'::lquery;
+SELECT 'a@b'::lquery;
+SELECT 'a{b'::lquery;
+SELECT 'a}b'::lquery;
+SELECT 'a|b'::lquery;
+SELECT 'a&b'::lquery;
+SELECT 'a(b'::lquery;
+SELECT 'a)b'::lquery;
+
