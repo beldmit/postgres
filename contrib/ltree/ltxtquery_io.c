@@ -93,6 +93,11 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				}
 				else
 				{
+					if (charlen == 1 && strchr("{}()|&%*@", *(state->buf)))
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("unquoted special symbol")));
+
 					state->state = INOPERAND;
 					*strval = state->buf;
 					*lenval = charlen;
