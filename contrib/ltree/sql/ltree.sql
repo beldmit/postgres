@@ -612,3 +612,23 @@ SELECT 'a&b'::ltxtquery;
 SELECT 'a(b'::ltxtquery;
 SELECT 'a)b'::ltxtquery;
 
+SELECT '"b'::ltxtquery;
+SELECT '%b'::ltxtquery;
+SELECT '*b'::ltxtquery;
+SELECT '@b'::ltxtquery;
+SELECT '{b'::ltxtquery;
+SELECT '}b'::ltxtquery;
+SELECT '|b'::ltxtquery;
+SELECT '&b'::ltxtquery;
+SELECT '(b'::ltxtquery;
+SELECT ')b'::ltxtquery;
+
+SELECT 'a"'::ltxtquery;
+SELECT 'a!'::ltxtquery;
+SELECT 'a{'::ltxtquery;
+SELECT 'a}'::ltxtquery;
+SELECT 'a|'::ltxtquery;
+SELECT 'a&'::ltxtquery;
+SELECT 'a('::ltxtquery;
+SELECT 'a)'::ltxtquery;
+
