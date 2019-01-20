@@ -119,9 +119,9 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						state->state = ENDOPERAND;
 					}
 					else
-					{
-						*lenval += charlen;
-					}
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("escaping syntax error")));
 				}
 				else if ((*flag & LVAR_QUOTEDPART) == 0)
 				{
@@ -137,14 +137,18 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 						return VAL;
 					}
 
-					if (charlen != 1 || (charlen == 1 && !t_iseq(state->buf, '@')
-								&& !t_iseq(state->buf, '*') && !t_iseq(state->buf, '\\')
-								&& !t_iseq(state->buf, '%')) )
+					if (charlen == 1 && strchr("!{}()|&", *(state->buf)))
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("unquoted special symbol")));
+
+					if (charlen != 1 || (charlen == 1 && !strchr("@%*\\", *(state->buf))) )
 					{
 						if (*flag & ~LVAR_QUOTEDPART)
 							ereport(ERROR,
 									(errcode(ERRCODE_SYNTAX_ERROR),
 									 errmsg("modifiers syntax error")));
+
 						*lenval += charlen;
 					}
 					else if (charlen == 1 && t_iseq(state->buf, '%'))
@@ -582,7 +586,7 @@ infix(INFIX *in, bool first)
 		char	   *op = in->op + in->curpol->distance;
 		char	   *opend = strchr(op, '\0');
 		int 		 delta = opend - op;
-		int 		 extra_bytes = bytes_to_escape(op, delta, ". \\|!%@*");
+		int 		 extra_bytes = bytes_to_escape(op, delta, ". \\|!%@*{}&()");
 
 		RESIZEBUF(in, in->curpol->length * 2 + 5);
 		copy_level(in->cur, op, delta, extra_bytes);
