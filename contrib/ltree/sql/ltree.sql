@@ -427,6 +427,10 @@ SELECT '1."*".4|3|"2".*{1,4}'::lquery;
 SELECT '\% \@'::lquery;
 SELECT '"\% \@"'::lquery;
 
+SELECT E'\\aa.b.c.d.e'::ltree ~ 'A@.b.c.d.e';
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ 'A*.b.c.d.e';
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ E'A*@.b.c.d.\\e';
+SELECT E'a\\a.b.c.\\d.e'::ltree ~ E'A*@|\\g.b.c.d.e';
 --ltxtquery
 SELECT '!"tree" & aWdf@*'::ltxtquery;
 SELECT '"!tree" & aWdf@*'::ltxtquery;
