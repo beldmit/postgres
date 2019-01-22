@@ -192,6 +192,16 @@ copy_level(char *dst, const char *src, int len, int extra_bytes)
 	}
 }
 
+static void
+real_nodeitem_len(nodeitem *lptr, const char *ptr, int escapes, int tail_space_bytes, int tail_space_symbols)
+{
+	lptr->len = ptr - lptr->start - escapes -
+		((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
+		((lptr->flag & LVAR_INCASE) ? 1 : 0) -
+		((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
+	lptr->wlen -= tail_space_symbols;
+}
+
 /*
  * If we have a part beginning with quote,
  * we must be sure it is finished with quote either.
@@ -298,9 +308,7 @@ ltree_in(PG_FUNCTION_ARGS)
 			{
 				if (t_iseq(ptr, '.') && !(lptr->flag & LVAR_QUOTEDPART))
 				{
-					lptr->len = ptr - lptr->start - escaped_count - tail_space_bytes;
-					lptr->wlen -= tail_space_symbols;
-
+					real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 					check_level_length(lptr, pos);
 
 					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
@@ -336,13 +344,19 @@ ltree_in(PG_FUNCTION_ARGS)
 		}
 		else if (state == LTPRS_WAITDELIMSTRICT)
 		{
+			if (t_isspace(ptr))
+			{
+				ptr += charlen;
+				pos++;
+				tail_space_bytes += charlen;
+				tail_space_symbols = 1;
+				continue;
+			}
+
 			if (!(charlen == 1 && t_iseq(ptr, '.')))
 				UNCHAR;
-			/* 
-			 * As we have state LTPRS_WAITDELIMSTRICT, we had spaces in quotes.
-			 * So we do not trim them.
-			 */
-			lptr->len = ptr - lptr->start - escaped_count;
+
+			real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 
 			adjust_quoted_nodeitem(lptr);
 			check_level_length(lptr, pos);
@@ -368,8 +382,7 @@ ltree_in(PG_FUNCTION_ARGS)
 					 errmsg("syntax error"),
 					 errdetail("Unexpected end of line.")));
 
-		lptr->len = ptr - lptr->start - escaped_count - tail_space_bytes;
-		lptr->wlen -= tail_space_symbols;
+		real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 
 		if (state == LTPRS_WAITDELIMSTRICT)
 			adjust_quoted_nodeitem(lptr);
@@ -615,11 +628,7 @@ lquery_in(PG_FUNCTION_ARGS)
 				}
 				else if (charlen == 1 && t_iseq(ptr, '|'))
 				{
-					lptr->len = ptr - lptr->start - escaped_count -
-						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
-						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-						((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
-					lptr->wlen -= tail_space_symbols;
+					real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
@@ -629,11 +638,7 @@ lquery_in(PG_FUNCTION_ARGS)
 				}
 				else if (charlen == 1 && t_iseq(ptr, '.'))
 				{
-					lptr->len = ptr - lptr->start - escaped_count -
-						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
-						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-						((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
-					lptr->wlen -= tail_space_symbols;
+					real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
@@ -654,7 +659,18 @@ lquery_in(PG_FUNCTION_ARGS)
 					if (charlen == 1 && strchr("!{}", *ptr))
 						UNCHAR;
 					if (state == LQPRS_WAITDELIMSTRICT)
+					{
+						if (t_isspace(ptr))
+						{
+							ptr += charlen;
+							pos++;
+							tail_space_bytes += charlen;
+							tail_space_symbols = 1;
+							continue;
+						}
+
 						UNCHAR;
+					}
 					if (lptr->flag & ~LVAR_QUOTEDPART)
 						UNCHAR;
 				}
@@ -670,7 +686,18 @@ lquery_in(PG_FUNCTION_ARGS)
 			else
 			{
 				if (state == LQPRS_WAITDELIMSTRICT)
+				{
+					if (t_isspace(ptr))
+					{
+						ptr += charlen;
+						pos++;
+						tail_space_bytes += charlen;
+						tail_space_symbols = 1;
+						continue;
+					}
+
 					UNCHAR;
+				}
 				if (lptr->flag & ~LVAR_QUOTEDPART)
 					UNCHAR;
 			}
@@ -786,11 +813,7 @@ lquery_in(PG_FUNCTION_ARGS)
 					 errmsg("syntax error"),
 					 errdetail("Unexpected end of line.")));
 
-		lptr->len = ptr - lptr->start - escaped_count -
-			((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
-			((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-			((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
-		lptr->wlen -= tail_space_symbols;
+		real_nodeitem_len(lptr, ptr, escaped_count, tail_space_bytes, tail_space_symbols);
 
 		if (state == LQPRS_WAITDELIMSTRICT)
 			adjust_quoted_nodeitem(lptr);
