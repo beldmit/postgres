@@ -209,7 +209,10 @@ adjust_quoted_nodeitem(nodeitem *lptr)
 static void
 check_level_length(const nodeitem *lptr, int pos)
 {
-	if (lptr->wlen == 0)
+	if (lptr->len < 0)
+		elog(ERROR, "internal error: invalid level length");
+
+	if (lptr->wlen <= 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("name of level is empty"),
@@ -240,7 +243,9 @@ ltree_in(PG_FUNCTION_ARGS)
 	int			charlen;
 	/* Position in strings, in symbols. */
 	int			pos = 0;
-	int     escaped_count = 0;
+	int			escaped_count = 0;
+	int			tail_space_bytes = 0;
+	int			tail_space_symbols = 0;
 
 	ptr = buf;
 	count_parts_ors(ptr, &levels, NULL);
@@ -260,6 +265,12 @@ ltree_in(PG_FUNCTION_ARGS)
 		charlen = pg_mblen(ptr);
 		if (state == LTPRS_WAITNAME)
 		{
+			if (t_isspace(ptr))
+			{
+				ptr += charlen;
+				pos++;
+				continue;
+			}
 			state = LTPRS_WAITDELIM;
 			lptr->start = ptr;
 			lptr->wlen = 0;
@@ -287,7 +298,9 @@ ltree_in(PG_FUNCTION_ARGS)
 			{
 				if (t_iseq(ptr, '.') && !(lptr->flag & LVAR_QUOTEDPART))
 				{
-					lptr->len = ptr - lptr->start - escaped_count;
+					lptr->len = ptr - lptr->start - escaped_count - tail_space_bytes;
+					lptr->wlen -= tail_space_symbols;
+
 					check_level_length(lptr, pos);
 
 					totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
@@ -309,12 +322,26 @@ ltree_in(PG_FUNCTION_ARGS)
 						UNCHAR;
 				}
 			}
+			
+			if (t_isspace(ptr))
+			{
+				tail_space_symbols++;
+				tail_space_bytes += charlen;
+			}
+			else
+			{
+				tail_space_symbols = 0;
+				tail_space_bytes   = 0;
+			}
 		}
 		else if (state == LTPRS_WAITDELIMSTRICT)
 		{
 			if (!(charlen == 1 && t_iseq(ptr, '.')))
 				UNCHAR;
-
+			/* 
+			 * As we have state LTPRS_WAITDELIMSTRICT, we had spaces in quotes.
+			 * So we do not trim them.
+			 */
 			lptr->len = ptr - lptr->start - escaped_count;
 
 			adjust_quoted_nodeitem(lptr);
@@ -341,7 +368,8 @@ ltree_in(PG_FUNCTION_ARGS)
 					 errmsg("syntax error"),
 					 errdetail("Unexpected end of line.")));
 
-		lptr->len = ptr - lptr->start - escaped_count;
+		lptr->len = ptr - lptr->start - escaped_count - tail_space_bytes;
+		lptr->wlen -= tail_space_symbols;
 
 		if (state == LTPRS_WAITDELIMSTRICT)
 			adjust_quoted_nodeitem(lptr);
@@ -458,6 +486,8 @@ lquery_in(PG_FUNCTION_ARGS)
 	int			pos = 0;
 	int			escaped_count = 0;
 	int			real_levels = 0;
+	int			tail_space_bytes = 0;
+	int			tail_space_symbols = 0;
 
 	ptr = buf;
 	count_parts_ors(ptr, &levels, &numOR);
@@ -475,6 +505,13 @@ lquery_in(PG_FUNCTION_ARGS)
 
 		if (state == LQPRS_WAITLEVEL)
 		{
+			if (t_isspace(ptr))
+			{
+				ptr += charlen;
+				pos++;
+				continue;
+			}
+
 			escaped_count = 0;
 			real_levels++;
 			if (charlen == 1) {
@@ -516,6 +553,13 @@ lquery_in(PG_FUNCTION_ARGS)
 		}
 		else if (state == LQPRS_WAITVAR)
 		{
+			if (t_isspace(ptr))
+			{
+				ptr += charlen;
+				pos++;
+				continue;
+			}
+
 			escaped_count = 0;
 			lptr++;
 			lptr->start = ptr;
@@ -574,7 +618,8 @@ lquery_in(PG_FUNCTION_ARGS)
 					lptr->len = ptr - lptr->start - escaped_count -
 						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-						((lptr->flag & LVAR_ANYEND) ? 1 : 0);
+						((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
+					lptr->wlen -= tail_space_symbols;
 
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
@@ -587,7 +632,8 @@ lquery_in(PG_FUNCTION_ARGS)
 					lptr->len = ptr - lptr->start - escaped_count -
 						((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 						((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-						((lptr->flag & LVAR_ANYEND) ? 1 : 0);
+						((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
+					lptr->wlen -= tail_space_symbols;
 
 					if (state == LQPRS_WAITDELIMSTRICT)
 						adjust_quoted_nodeitem(lptr);
@@ -627,6 +673,17 @@ lquery_in(PG_FUNCTION_ARGS)
 					UNCHAR;
 				if (lptr->flag & ~LVAR_QUOTEDPART)
 					UNCHAR;
+			}
+
+			if (t_isspace(ptr))
+			{
+				tail_space_symbols++;
+				tail_space_bytes += charlen;
+			}
+			else
+			{
+				tail_space_symbols = 0;
+				tail_space_bytes   = 0;
 			}
 		}
 		else if (state == LQPRS_WAITOPEN)
@@ -732,7 +789,8 @@ lquery_in(PG_FUNCTION_ARGS)
 		lptr->len = ptr - lptr->start - escaped_count -
 			((lptr->flag & LVAR_SUBLEXEME) ? 1 : 0) -
 			((lptr->flag & LVAR_INCASE) ? 1 : 0) -
-			((lptr->flag & LVAR_ANYEND) ? 1 : 0);
+			((lptr->flag & LVAR_ANYEND) ? 1 : 0) - tail_space_bytes;
+		lptr->wlen -= tail_space_symbols;
 
 		if (state == LQPRS_WAITDELIMSTRICT)
 			adjust_quoted_nodeitem(lptr);
