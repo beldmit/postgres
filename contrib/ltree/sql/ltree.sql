@@ -307,6 +307,15 @@ SELECT E'x\\.'::ltree;
 SELECT E'x\\a'::ltree;
 SELECT E'x\\n'::ltree;
 SELECT 'a b.с d'::ltree;
+SELECT ' e . f '::ltree;
+SELECT ' '::ltree;
+
+SELECT E'\\ g  . h\\ '::ltree;
+SELECT E'\\ g'::ltree;
+SELECT E' h\\ '::ltree;
+SELECT '" g  "." h "'::ltree;
+SELECT '" g  " '::ltree;
+SELECT '" g  "   ." h "  '::ltree;
 
 SELECT nlevel(E'Bottom\\.Test'::ltree);
 SELECT subpath(E'Bottom\\.'::ltree, 0, 1);
@@ -324,13 +333,13 @@ SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '\z\z\z\z\z')::ltree;
 
-SELECT(
+SELECT('   ' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
-'\a\b\c\d\e')::ltree;
+'\a\b\c\d\e   ')::ltree;
 
 SELECT 'abc\|d'::lquery;
 SELECT 'abc\|d'::ltree ~ 'abc\|d'::lquery;
@@ -367,6 +376,31 @@ SELECT(
 '01234567890123456789012345678901234567890123456789' ||
 '01234567890123456789012345678901234567890123456789' ||
 '\z\z\z\z\z"')::lquery;
+
+SELECT ' e . f '::lquery;
+SELECT ' e | f '::lquery;
+
+SELECT E'\\ g  . h\\ '::lquery;
+SELECT E'\\ g'::lquery;
+SELECT E' h\\ '::lquery;
+SELECT E'"\\ g"'::lquery;
+SELECT E' "h\\ "'::lquery;
+SELECT '" g  "." h "'::lquery;
+
+SELECT E'\\ g  | h\\ '::lquery;
+SELECT '" g  "|" h "'::lquery;
+
+SELECT '" g  " '::lquery;
+SELECT '" g  "    ." h "  '::lquery;
+SELECT '" g  "    |  " h "   '::lquery;
+
+SELECT('   ' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'01234567890123456789012345678901234567890123456789' ||
+'\a\b\c\d\e   ')::lquery;
 
 SELECT E'"a\\"b"'::lquery;
 SELECT '"a!b"'::lquery;
@@ -532,6 +566,9 @@ SELECT '"".""'::ltree;
 SELECT '""'::lquery;
 SELECT '"".""'::lquery;
 SELECT 'a.""'::lquery;
+SELECT ' . '::ltree;
+SELECT ' . '::lquery;
+SELECT ' | '::lquery;
 
 SELECT(
 '01234567890123456789012345678901234567890123456789' ||
