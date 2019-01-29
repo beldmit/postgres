@@ -42,12 +42,12 @@
   </para>
 
   <para>
-	 Examples: <literal>42</literal>, <literal>"\\42"</literal>,
-	 <literal>\\4\\2</literal>, <literal> 42 </literal> and <literal> "42"
-	 </literal> will have the similar internal representation and, being
-	 converted from internal representation, will become <literal>42</literal>.
-	 Literal <literal>abc def</literal> will turn into <literal>"abc
-	 def"</literal>.
+    Examples: <literal>42</literal>, <literal>"\\42"</literal>,
+    <literal>\\4\\2</literal>, <literal> 42 </literal> and <literal> "42"
+    </literal> will have the similar internal representation and, being
+    converted from internal representation, will become <literal>42</literal>.
+    Literal <literal>abc def</literal> will turn into <literal>"abc
+    def"</literal>.
   </para>
 
   <para>
