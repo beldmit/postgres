@@ -132,7 +132,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				{
 					if ((*(state->buf) == '\0') || t_isspace(state->buf))
 					{
-						/*Adjust*/
+						/* Adjust */
 						if (state->state == ENDOPERAND)
 						{
 							(*strval)++;
@@ -147,7 +147,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("unquoted special symbol")));
 
-					if (charlen != 1 || (charlen == 1 && !strchr("@%*\\", *(state->buf))) )
+					if (charlen != 1 || (charlen == 1 && !strchr("@%*\\", *(state->buf))))
 					{
 						if (*flag & ~LVAR_QUOTEDPART)
 							ereport(ERROR,
@@ -174,7 +174,7 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 					}
 					else
 					{
-						/*Adjust*/
+						/* Adjust */
 						if (state->state == ENDOPERAND)
 						{
 							(*strval)++;
@@ -202,8 +202,8 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 				{
 					if (*(state->buf) == '\0' && (*flag & LVAR_QUOTEDPART))
 						ereport(ERROR,
-							(errcode(ERRCODE_SYNTAX_ERROR),
-							 errmsg("escaping syntax error")));
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("escaping syntax error")));
 
 					if (state->state == ENDOPERAND)
 						ereport(ERROR,
@@ -263,15 +263,16 @@ gettoken_query(QPRS_STATE *state, int32 *val, int32 *lenval, char **strval, uint
 static int
 copy_skip_escapes(char *dst, const char *src, int total_len)
 {
-	uint16 copied = 0;
-	int charlen;
-	bool escaping = false;
-	int skipped = 0;
+	uint16		copied = 0;
+	int			charlen;
+	bool		escaping = false;
+	int			skipped = 0;
 
 	while (*src && (copied + skipped < total_len))
 	{
 		charlen = pg_mblen(src);
-		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0) {
+		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0)
+		{
 			escaping = 1;
 			src++;
 			skipped++;
@@ -290,7 +291,7 @@ copy_skip_escapes(char *dst, const char *src, int total_len)
 
 	if (copied + skipped != total_len)
 		elog(ERROR, "internal error during copying");
-	
+
 	return skipped;
 }
 
@@ -326,7 +327,7 @@ pushquery(QPRS_STATE *state, int32 type, int32 val, int32 distance, int32 lenval
 static void
 pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 {
-	int skipped = 0;
+	int			skipped = 0;
 
 	if (lenval == 0)
 		ereport(ERROR,
@@ -347,7 +348,7 @@ pushval_asis(QPRS_STATE *state, int type, char *strval, int lenval, uint16 flag)
 		state->curop = state->op + tmp;
 	}
 	skipped = copy_skip_escapes((void *) state->curop, (void *) strval, lenval);
-	if (lenval == skipped) /* Empty quoted literal */
+	if (lenval == skipped)		/* Empty quoted literal */
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("empty labels are forbidden")));
@@ -590,8 +591,8 @@ infix(INFIX *in, bool first)
 	{
 		char	   *op = in->op + in->curpol->distance;
 		char	   *opend = strchr(op, '\0');
-		int 		 delta = opend - op;
-		int 		 extra_bytes = bytes_to_escape(op, delta, ". \\|!%@*{}&()");
+		int			delta = opend - op;
+		int			extra_bytes = bytes_to_escape(op, delta, ". \\|!%@*{}&()");
 
 		RESIZEBUF(in, in->curpol->length * 2 + 5);
 		copy_level(in->cur, op, delta, extra_bytes);

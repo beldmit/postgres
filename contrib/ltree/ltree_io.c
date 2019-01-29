@@ -39,8 +39,8 @@ typedef struct
 static void
 count_parts_ors(const char *ptr, int *plevels, int *pORs)
 {
-	int escape_mode = 0;
-	int charlen;
+	int			escape_mode = 0;
+	int			charlen;
 
 	while (*ptr)
 	{
@@ -73,14 +73,15 @@ count_parts_ors(const char *ptr, int *plevels, int *pORs)
 static void
 copy_unescaped(char *dst, const char *src, int len)
 {
-	uint16 copied = 0;
-	int charlen;
-	bool escaping = false;
+	uint16		copied = 0;
+	int			charlen;
+	bool		escaping = false;
 
 	while (*src && copied < len)
 	{
 		charlen = pg_mblen(src);
-		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0) {
+		if ((charlen == 1) && t_iseq(src, '\\') && escaping == 0)
+		{
 			escaping = 1;
 			src++;
 			continue;
@@ -112,10 +113,10 @@ copy_unescaped(char *dst, const char *src, int len)
 int
 bytes_to_escape(const char *start, const int len, const char *to_escape)
 {
-	uint16 copied = 0;
-	int charlen;
-	int escapes = 0;
-	int quotes  = 0;
+	uint16		copied = 0;
+	int			charlen;
+	int			escapes = 0;
+	int			quotes = 0;
 	const char *buf = start;
 
 	if (len == 0)
@@ -140,17 +141,17 @@ bytes_to_escape(const char *start, const int len, const char *to_escape)
 		copied += charlen;
 	}
 
-	return (quotes > 0) ? quotes+2 :
+	return (quotes > 0) ? quotes + 2 :
 		(escapes > 0) ? 2 : 0;
 }
 
 static int
 copy_escaped(char *dst, const char *src, int len)
 {
-	uint16 copied = 0;
-	int charlen;
-	int escapes = 0;
-	char *buf = dst;
+	uint16		copied = 0;
+	int			charlen;
+	int			escapes = 0;
+	char	   *buf = dst;
 
 	while (*src && copied < len)
 	{
@@ -173,7 +174,7 @@ copy_escaped(char *dst, const char *src, int len)
 	return escapes;
 }
 
-void 
+void
 copy_level(char *dst, const char *src, int len, int extra_bytes)
 {
 	if (extra_bytes == 0)
@@ -181,13 +182,13 @@ copy_level(char *dst, const char *src, int len, int extra_bytes)
 	else if (extra_bytes == 2)
 	{
 		*dst = '"';
-		memcpy(dst+1, src, len);
-		dst[len+1] = '"';
+		memcpy(dst + 1, src, len);
+		dst[len + 1] = '"';
 	}
 	else
 	{
 		*dst = '"';
-		copy_escaped(dst+1, src, len);
+		copy_escaped(dst + 1, src, len);
 		dst[len + extra_bytes - 1] = '"';
 	}
 }
@@ -212,7 +213,7 @@ static void
 adjust_quoted_nodeitem(nodeitem *lptr)
 {
 	lptr->start++;
-	lptr->len  -= 2;
+	lptr->len -= 2;
 	lptr->wlen -= 2;
 }
 
@@ -227,15 +228,15 @@ check_level_length(const nodeitem *lptr, int pos)
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("name of level is empty"),
 				 errdetail("Name length is 0 in position %d.",
-					 pos)));
+						   pos)));
 
 	if (lptr->wlen > 255)
 		ereport(ERROR,
 				(errcode(ERRCODE_NAME_TOO_LONG),
 				 errmsg("name of level is too long"),
 				 errdetail("Name length is %d, must "
-					 "be < 256, in position %d.",
-					 lptr->wlen, pos)));
+						   "be < 256, in position %d.",
+						   lptr->wlen, pos)));
 }
 
 Datum
@@ -244,13 +245,14 @@ ltree_in(PG_FUNCTION_ARGS)
 	char	   *buf = (char *) PG_GETARG_POINTER(0);
 	char	   *ptr;
 	nodeitem   *list,
-						 *lptr;
+			   *lptr;
 	int			levels = 0,
-					totallen = 0;
+				totallen = 0;
 	int			state = LTPRS_WAITNAME;
 	ltree	   *result;
 	ltree_level *curlevel;
 	int			charlen;
+
 	/* Position in strings, in symbols. */
 	int			pos = 0;
 	int			escaped_count = 0;
@@ -264,11 +266,12 @@ ltree_in(PG_FUNCTION_ARGS)
 		ereport(ERROR,
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("number of levels (%d) exceeds the maximum allowed (%d)",
-					 levels, (int) (MaxAllocSize / sizeof(nodeitem)))));
+						levels, (int) (MaxAllocSize / sizeof(nodeitem)))));
 	list = lptr = (nodeitem *) palloc(sizeof(nodeitem) * (levels));
+
 	/*
 	 * This block calculates single nodes' settings
-	 * */
+	 */
 	ptr = buf;
 	while (*ptr)
 	{
@@ -287,8 +290,10 @@ ltree_in(PG_FUNCTION_ARGS)
 			lptr->flag = 0;
 			escaped_count = 0;
 
-			if (charlen == 1) {
-				if (t_iseq(ptr, '.')) {
+			if (charlen == 1)
+			{
+				if (t_iseq(ptr, '.'))
+				{
 					UNCHAR;
 				}
 				else if (t_iseq(ptr, '\\'))
@@ -326,11 +331,11 @@ ltree_in(PG_FUNCTION_ARGS)
 						lptr->flag &= ~LVAR_QUOTEDPART;
 						state = LTPRS_WAITDELIMSTRICT;
 					}
-					else /* Unescaped quote is forbidden */
+					else		/* Unescaped quote is forbidden */
 						UNCHAR;
 				}
 			}
-			
+
 			if (t_isspace(ptr))
 			{
 				tail_space_symbols++;
@@ -339,7 +344,7 @@ ltree_in(PG_FUNCTION_ARGS)
 			else
 			{
 				tail_space_symbols = 0;
-				tail_space_bytes   = 0;
+				tail_space_bytes = 0;
 			}
 		}
 		else if (state == LTPRS_WAITDELIMSTRICT)
@@ -392,7 +397,7 @@ ltree_in(PG_FUNCTION_ARGS)
 		totallen += MAXALIGN(lptr->len + LEVEL_HDRSIZE);
 		lptr++;
 	}
-	else if (!(state == LTPRS_WAITNAME && lptr == list)) /* Empty string */
+	else if (!(state == LTPRS_WAITNAME && lptr == list))	/* Empty string */
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("syntax error"),
@@ -423,11 +428,11 @@ ltree_out(PG_FUNCTION_ARGS)
 {
 	ltree	   *in = PG_GETARG_LTREE_P(0);
 	char	   *buf,
-					 *ptr;
+			   *ptr;
 	int			i;
 	ltree_level *curlevel;
-	Size 	allocated = VARSIZE(in);
-	Size  filled = 0;
+	Size		allocated = VARSIZE(in);
+	Size		filled = 0;
 
 	ptr = buf = (char *) palloc(allocated);
 	curlevel = LTREE_FIRST(in);
@@ -441,7 +446,8 @@ ltree_out(PG_FUNCTION_ARGS)
 		}
 		if (curlevel->len >= 0)
 		{
-			int extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, "\\ .");
+			int			extra_bytes = bytes_to_escape(curlevel->name, curlevel->len, "\\ .");
+
 			if (filled + extra_bytes + curlevel->len >= allocated)
 			{
 				buf = repalloc(buf, allocated + (extra_bytes + curlevel->len) * 2);
@@ -527,8 +533,10 @@ lquery_in(PG_FUNCTION_ARGS)
 
 			escaped_count = 0;
 			real_levels++;
-			if (charlen == 1) {
-				if (t_iseq(ptr, '!')) {
+			if (charlen == 1)
+			{
+				if (t_iseq(ptr, '!'))
+				{
 					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
 					lptr->start = ptr + 1;
 					state = LQPRS_WAITDELIM;
@@ -538,15 +546,19 @@ lquery_in(PG_FUNCTION_ARGS)
 				}
 				else if (t_iseq(ptr, '*'))
 					state = LQPRS_WAITOPEN;
-				else if (t_iseq(ptr, '\\')) {
+				else if (t_iseq(ptr, '\\'))
+				{
 					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
 					lptr->start = ptr;
 					curqlevel->numvar = 1;
 					state = LQPRS_WAITESCAPED;
 				}
-				else if (strchr(".|@%{}", *ptr)) {
+				else if (strchr(".|@%{}", *ptr))
+				{
 					UNCHAR;
-				} else {
+				}
+				else
+				{
 					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
 					lptr->start = ptr;
 					state = LQPRS_WAITDELIM;
@@ -557,7 +569,8 @@ lquery_in(PG_FUNCTION_ARGS)
 					}
 				}
 			}
-			else {
+			else
+			{
 				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
 				lptr->start = ptr;
 				state = LQPRS_WAITDELIM;
@@ -710,7 +723,7 @@ lquery_in(PG_FUNCTION_ARGS)
 			else
 			{
 				tail_space_symbols = 0;
-				tail_space_bytes   = 0;
+				tail_space_bytes = 0;
 			}
 		}
 		else if (state == LQPRS_WAITOPEN)
@@ -800,10 +813,10 @@ lquery_in(PG_FUNCTION_ARGS)
 
 	if (lptr->flag & LVAR_QUOTEDPART)
 	{
-			ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					 errmsg("syntax error"),
-					 errdetail("Unexpected end of line.")));
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("syntax error"),
+				 errdetail("Unexpected end of line.")));
 	}
 	else if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
 	{
@@ -932,23 +945,27 @@ lquery_out(PG_FUNCTION_ARGS)
 		if (i != 0)
 		{
 			*ptr = '.';
-			ptr++; filled++;
+			ptr++;
+			filled++;
 		}
 		if (curqlevel->numvar)
 		{
 			if (curqlevel->flag & LQL_NOT)
 			{
 				*ptr = '!';
-				ptr++; filled++;
+				ptr++;
+				filled++;
 			}
 			curtlevel = LQL_FIRST(curqlevel);
 			for (j = 0; j < curqlevel->numvar; j++)
 			{
-				int extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|!*@%{}");
+				int			extra_bytes = bytes_to_escape(curtlevel->name, curtlevel->len, ". \\|!*@%{}");
+
 				if (j != 0)
 				{
 					*ptr = '|';
-					ptr++; filled++;
+					ptr++;
+					filled++;
 				}
 				if (filled + extra_bytes + curtlevel->len >= totallen)
 				{
@@ -963,17 +980,20 @@ lquery_out(PG_FUNCTION_ARGS)
 				if ((curtlevel->flag & LVAR_SUBLEXEME))
 				{
 					*ptr = '%';
-					ptr++; filled++;
+					ptr++;
+					filled++;
 				}
 				if ((curtlevel->flag & LVAR_INCASE))
 				{
 					*ptr = '@';
-					ptr++; filled++;
+					ptr++;
+					filled++;
 				}
 				if ((curtlevel->flag & LVAR_ANYEND))
 				{
 					*ptr = '*';
-					ptr++; filled++;
+					ptr++;
+					filled++;
 				}
 				curtlevel = LVAR_NEXT(curtlevel);
 			}
