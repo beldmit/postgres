@@ -37,7 +37,7 @@
     symbols, it is printed as is. Otherwise, it is wrapped in quotes and, if
     there are internal quotes, they are escaped with backslash. The list of special 
     symbols for ltree includes space (<literal> </literal>), backslash and double quote,
-    lquery and ltxtquery also require escaping <literal>|</literal>, <literal>&</literal>, 
+    lquery and ltxtquery also require escaping <literal>|</literal>, <literal>&amp;</literal>, 
     <literal>!</literal>, <literal>@</literal>, and <literal>*</literal>.
   </para>
 
