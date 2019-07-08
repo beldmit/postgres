@@ -18,11 +18,12 @@
 
   <para>
    A <firstterm>label</firstterm> is a sequence of characters. Labels must be 
-   less than 256 symbols long. Label may contain any character supported by Postgres
-   except <literal>\0</literal>. If label contains spaces, dots, lquery modifiers,
-   they may be <firstterm>escaped</firstterm>. Escaping can be done either by preceeding
-   backslash (<literal>\\</literal>) symbol, or by wrapping the label in whole in double 
-   quotes (<literal>"</literal>). Initial and final unescaped whitespace is stripped.
+   fewer than 256 characters in length. Label may contain any character supported 
+	 by <productname>PostgreSQL</productname> except <literal>\0</literal>. If label 
+	 contains spaces, dots, or lquery modifiers, they may be <firstterm>escaped</firstterm>. 
+	 Escaping can be done with either by a preceding backslash (<literal>\\</literal>) 
+	 symbol or by wrapping the whole label in double quotes (<literal>"</literal>). 
+	 Initial and final unescaped whitespace is stripped.
   </para>
 
   <para>
@@ -31,11 +32,11 @@
   </para>
 
   <para>
-    During converting text into internal representations, wrapping double quotes 
-    and escaping backslashes are removed. During converting internal
-    representations into text, if the label does not contain any special
+    During converting to internal representation, wrapping double quotes 
+    and escaping backslashes are removed. During converting from internal
+    representation to text, if the label does not contain any special
     symbols, it is printed as is. Otherwise, it is wrapped in quotes and, if
-    there are internal quotes, they are escaped with backslash. The list of special 
+    there are internal quotes, they are escaped with backslashes. The list of special 
     symbols for ltree includes space (<literal> </literal>), backslash and double quote,
     lquery and ltxtquery also require escaping <literal>|</literal>, <literal>&amp;</literal>, 
     <literal>!</literal>, <literal>@</literal>, and <literal>*</literal>.
@@ -44,7 +45,7 @@
   <para>
     Examples: <literal>42</literal>, <literal>"\\42"</literal>,
     <literal>\\4\\2</literal>, <literal> 42 </literal> and <literal> "42"
-    </literal> will have the similar internal representation and, being
+    </literal> will have the same internal representation and, being
     converted from internal representation, will become <literal>42</literal>.
     Literal <literal>abc def</literal> will turn into <literal>"abc
     def"</literal>.
