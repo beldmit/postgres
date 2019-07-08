@@ -19,11 +19,11 @@
   <para>
    A <firstterm>label</firstterm> is a sequence of characters. Labels must be 
    fewer than 256 characters in length. Label may contain any character supported 
-	 by <productname>PostgreSQL</productname> except <literal>\0</literal>. If label 
-	 contains spaces, dots, or lquery modifiers, they may be <firstterm>escaped</firstterm>. 
-	 Escaping can be done with either by a preceding backslash (<literal>\\</literal>) 
-	 symbol or by wrapping the whole label in double quotes (<literal>"</literal>). 
-	 Initial and final unescaped whitespace is stripped.
+   by <productname>PostgreSQL</productname> except <literal>\0</literal>. If label 
+   contains spaces, dots, or lquery modifiers, they may be <firstterm>escaped</firstterm>. 
+   Escaping can be done with either by a preceding backslash (<literal>\\</literal>) 
+   symbol or by wrapping the whole label in double quotes (<literal>"</literal>). 
+   Initial and final unescaped whitespace is stripped.
   </para>
 
   <para>
