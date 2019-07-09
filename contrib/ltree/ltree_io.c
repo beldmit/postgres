@@ -36,6 +36,13 @@ typedef struct
 #define LTPRS_WAITESCAPED 2
 #define LTPRS_WAITDELIMSTRICT 3
 
+/*
+ * Calculating the number of literals in the string to be parsed.
+ * For ltree, returns a number of not escaped delimiters (dots).
+ * If pORs is not NULL, calculates the number of alternate templates (used in lquery parsing).
+ * The function can return more levels than is really necessesary, 
+ * it will be corrected during the real parsing process.
+ */ 
 static void
 count_parts_ors(const char *ptr, int *plevels, int *pORs)
 {
@@ -521,64 +528,50 @@ lquery_in(PG_FUNCTION_ARGS)
 	while (*ptr)
 	{
 		charlen = pg_mblen(ptr);
-
-		if (state == LQPRS_WAITLEVEL)
+		switch (state)
 		{
+		 case LQPRS_WAITLEVEL:
 			if (t_isspace(ptr))
-			{
-				ptr += charlen;
-				pos++;
-				continue;
-			}
+				break; /* Just go to next symbol */
 
 			escaped_count = 0;
 			real_levels++;
+
 			if (charlen == 1)
 			{
+				if (strchr(".|@%{}", *ptr))
+					UNCHAR;
+
+				if (t_iseq(ptr, '*'))
+				{
+					state = LQPRS_WAITOPEN;
+					break;
+				}
+			}
+			GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
+			lptr->start = ptr;
+			curqlevel->numvar = 1;
+			state = LQPRS_WAITDELIM;
+			if (charlen == 1)
+			{
+				if (t_iseq(ptr, '\\'))
+				{
+					state = LQPRS_WAITESCAPED;
+					break;
+				}
 				if (t_iseq(ptr, '!'))
 				{
-					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
-					lptr->start = ptr + 1;
-					state = LQPRS_WAITDELIM;
-					curqlevel->numvar = 1;
+					lptr->start += 1 /*FIXME explain why */;
 					curqlevel->flag |= LQL_NOT;
 					hasnot = true;
 				}
-				else if (t_iseq(ptr, '*'))
-					state = LQPRS_WAITOPEN;
-				else if (t_iseq(ptr, '\\'))
+				else if (t_iseq(ptr, '"'))
 				{
-					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
-					lptr->start = ptr;
-					curqlevel->numvar = 1;
-					state = LQPRS_WAITESCAPED;
-				}
-				else if (strchr(".|@%{}", *ptr))
-				{
-					UNCHAR;
-				}
-				else
-				{
-					GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
-					lptr->start = ptr;
-					state = LQPRS_WAITDELIM;
-					curqlevel->numvar = 1;
-					if (t_iseq(ptr, '"'))
-					{
-						lptr->flag |= LVAR_QUOTEDPART;
-					}
+					lptr->flag |= LVAR_QUOTEDPART;
 				}
 			}
-			else
-			{
-				GETVAR(curqlevel) = lptr = (nodeitem *) palloc0(sizeof(nodeitem) * numOR);
-				lptr->start = ptr;
-				state = LQPRS_WAITDELIM;
-				curqlevel->numvar = 1;
-			}
-		}
-		else if (state == LQPRS_WAITVAR)
-		{
+			break;
+		case LQPRS_WAITVAR:
 			if (t_isspace(ptr))
 			{
 				ptr += charlen;
@@ -596,9 +589,9 @@ lquery_in(PG_FUNCTION_ARGS)
 			state = (t_iseq(ptr, '\\')) ? LQPRS_WAITESCAPED : LQPRS_WAITDELIM;
 			if (t_iseq(ptr, '"'))
 				lptr->flag |= LVAR_QUOTEDPART;
-		}
-		else if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
-		{
+			break;
+		case LQPRS_WAITDELIM:
+		case LQPRS_WAITDELIMSTRICT:
 			if (charlen == 1 && t_iseq(ptr, '"'))
 			{
 				/* We are here if variant begins with ! */
@@ -725,9 +718,8 @@ lquery_in(PG_FUNCTION_ARGS)
 				tail_space_symbols = 0;
 				tail_space_bytes = 0;
 			}
-		}
-		else if (state == LQPRS_WAITOPEN)
-		{
+			break;
+		case LQPRS_WAITOPEN:
 			if (charlen == 1 && t_iseq(ptr, '{'))
 				state = LQPRS_WAITFNUM;
 			else if (charlen == 1 && t_iseq(ptr, '.'))
@@ -739,9 +731,8 @@ lquery_in(PG_FUNCTION_ARGS)
 			}
 			else
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITFNUM)
-		{
+			break;
+		case LQPRS_WAITFNUM:
 			if (charlen == 1 && t_iseq(ptr, ','))
 				state = LQPRS_WAITSNUM;
 			else if (t_isdigit(ptr))
@@ -751,9 +742,8 @@ lquery_in(PG_FUNCTION_ARGS)
 			}
 			else
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITSNUM)
-		{
+			break;
+		case LQPRS_WAITSNUM:
 			if (t_isdigit(ptr))
 			{
 				curqlevel->high = atoi(ptr);
@@ -766,16 +756,14 @@ lquery_in(PG_FUNCTION_ARGS)
 			}
 			else
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITCLOSE)
-		{
+			break;
+		case LQPRS_WAITCLOSE:
 			if (charlen == 1 && t_iseq(ptr, '}'))
 				state = LQPRS_WAITEND;
 			else if (!t_isdigit(ptr))
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITND)
-		{
+			break;
+		case LQPRS_WAITND:
 			if (charlen == 1 && t_iseq(ptr, '}'))
 			{
 				curqlevel->high = curqlevel->low;
@@ -785,9 +773,8 @@ lquery_in(PG_FUNCTION_ARGS)
 				state = LQPRS_WAITSNUM;
 			else if (!t_isdigit(ptr))
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITEND)
-		{
+			break;
+		case LQPRS_WAITEND:
 			if (charlen == 1 && (t_iseq(ptr, '.') || t_iseq(ptr, '|')))
 			{
 				state = LQPRS_WAITLEVEL;
@@ -795,16 +782,15 @@ lquery_in(PG_FUNCTION_ARGS)
 			}
 			else
 				UNCHAR;
-		}
-		else if (state == LQPRS_WAITESCAPED)
-		{
+			break;
+		case LQPRS_WAITESCAPED:
 			state = LQPRS_WAITDELIM;
 			escaped_count++;
-		}
-		else
+			break;
+		default:
 			/* internal error */
 			elog(ERROR, "internal error in parser");
-
+		}
 		ptr += charlen;
 		if (state == LQPRS_WAITDELIM || state == LQPRS_WAITDELIMSTRICT)
 			lptr->wlen++;
